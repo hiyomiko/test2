@@ -1,0 +1,21 @@
+<h1>Upload Result</h1>
+
+#{if errorMessages}
+    <h2>Errors:</h2>
+    <ul>
+        #{list items:errorMessages, as:'error'}
+            <li>${error}</li>
+        #{/list}
+    </ul>
+#{/if}
+
+#{if users}
+    <h2>Successfully Inserted Users:</h2>
+    <ul>
+        #{list items:users, as:'user'}
+            <li>ID: ${user.id}, Name: ${user.name}, Email: ${user.email}</li>
+        #{/list}
+    </ul>
+#{/if}
+
+<a href="@{UserController.upload()}">Back to Upload</a>

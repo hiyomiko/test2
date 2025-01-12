@@ -1,0 +1,10 @@
+<h1>CSV Upload</h1>
+
+#{ifErrors}
+    <p style="color: red;">${errors.forKey('csvFile')}</p>
+#{/ifErrors}
+
+<form action="@{UserController.processUpload()}" method="POST" enctype="multipart/form-data">
+    <input type="file" name="csvFile">
+    <input type="submit" value="Upload">
+</form>

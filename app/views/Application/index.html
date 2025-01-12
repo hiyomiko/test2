@@ -1,0 +1,37 @@
+#{extends 'main.html' /}
+#{set title:'Merchant List' /}
+
+<h1>Merchant List</h1>
+
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Merchant No</th>
+            <th>Merchant Name</th>
+            <th>Contract Accounts</th>
+        </tr>
+    </thead>
+    <tbody>
+        #{list items:merchants, as:'merchant'}
+            <tr>
+                <td>${merchant.id}</td>
+                <td>${merchant.merchant_no}</td>
+                <td>${merchant.merchant_name}</td>
+                <td>
+                    <ul>
+                        #{list items:merchant.contractAccounts, as:'account'}
+                            <li>
+                                Contract No: ${account.id.contractNo},
+                                Account Type: ${account.id.accountType},
+                                Account Number: ${account.accountNumber},
+                                Apply Start Date: #{formatDate account.applyStartDate /},
+                                Apply End Date: #{formatDate account.applyEndDate /}
+                            </li>
+                        #{/list}
+                    </ul>
+                </td>
+            </tr>
+        #{/list}
+    </tbody>
+</table>

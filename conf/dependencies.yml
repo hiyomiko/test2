@@ -1,0 +1,15 @@
+# conf/dependencies.yml
+require:
+    - play
+    - play -> jpa
+
+# Application dependencies
+dependencies:
+  # Hibernate Core (通常はPlay JPAモジュールが適切なバージョンを提供します)
+  # - org.hibernate:hibernate-core:4.3.11.Final
+
+  # Hibernate EntityManager (通常はPlay JPAモジュールが適切なバージョンを提供します)
+  # - org.hibernate:hibernate-entitymanager:4.3.11.Final
+
+  # Oracle JDBC driver (バージョンは環境に合わせて調整してください)
+  - com.oracle.database.jdbc:ojdbc8:21.0.0.0

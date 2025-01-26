@@ -1,0 +1,59 @@
+#{extends 'main.html' /}
+#{set title:'動的表示・非表示と振込先追加' /}
+
+<h2>動的表示・非表示と振込先追加</h2>
+
+<select id="displaySwitch">
+    <option value="hide">非表示</option>
+    <option value="show">表示</option>
+</select>
+
+<div id="toggleArea" style="display: none;">
+    <h3>振込先情報</h3>
+    <div id="transferList">
+        <!-- 振込先情報がここに追加されます -->
+    </div>
+    <button id="addTransfer">振込先を追加</button>
+    <p id="transferLimitMessage" style="color: red; display: none;">振込先は12個までです。</p>
+</div>
+
+<script src="@{'/public/javascripts/jquery-1.6.4.min.js'}" type="text/javascript"></script>
+<script type="text/javascript">
+	
+	
+    $(function() {
+        var transferCount = 0;
+        var maxTransfers = 12;
+
+        // プルダウンの変更イベント
+        $('#displaySwitch').change(function() {
+            if ($(this).val() === 'show') {
+                $('#toggleArea').show();
+            } else {
+                $('#toggleArea').hide();
+            }
+        });
+
+        // 振込先追加ボタンのクリックイベント
+        $('#addTransfer').click(function() {
+            if (transferCount < maxTransfers) {
+                transferCount++;
+                var newTransferDiv = $('<div class="transfer-info">');
+                newTransferDiv.append('銀行名：<input type="text" name="bankName_' + transferCount + '"> ');
+                newTransferDiv.append('支店名：<input type="text" name="branchName_' + transferCount + '"> ');
+                newTransferDiv.append('口座番号：<input type="text" name="accountNumber_' + transferCount + '"> ');
+                newTransferDiv.append('<button class="removeTransfer">削除</button>');
+                $('#transferList').append(newTransferDiv);
+            } else {
+                $('#transferLimitMessage').show();
+            }
+        });
+
+        // 動的に追加された削除ボタンのイベント (イベント委譲)
+        $('#transferList').on('click', '.removeTransfer', function() {
+            $(this).parent('.transfer-info').remove();
+            transferCount--;
+            $('#transferLimitMessage').hide(); // 削除されたのでメッセージを非表示にする
+        });
+    });
+</script>

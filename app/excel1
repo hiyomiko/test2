@@ -1,0 +1,149 @@
+Sub GenerateBeanClassFromExcel()
+
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Sheets("クラス作成") ' ★ シート名を適宜変更してください
+
+    Dim lastRow As Long
+    lastRow = ws.Cells(Rows.Count, "C").End(xlUp).Row
+
+    Dim className As String
+    className = "GeneratedBean" ' 生成するBeanクラス名
+
+    Dim packageName As String
+    packageName = "com.example.generated" ' 生成するBeanクラスのパッケージ名
+
+    Dim filePath As String
+    filePath = ThisWorkbook.Path & "\" & className & ".java"
+
+    Dim fileNum As Integer
+    fileNum = FreeFile
+
+    Dim i As Long
+    Dim fieldName As String
+    Dim attributeType As String
+    Dim byteLimit As Long
+    Dim javaType As String
+    Dim isRequired As Boolean
+    Dim columnNumber As String ' B列の番号を格納する変数
+    Dim isUnique As Boolean ' G列のユニークフラグを格納する変数
+
+    Open filePath For Output As #fileNum
+
+    ' パッケージ宣言
+    Print #fileNum, "package " & packageName & ";"
+    Print #fileNum, ""
+
+    ' カスタムアノテーションの定義
+    Print #fileNum, "import java.lang.annotation.ElementType;"
+    Print #fileNum, "import java.lang.annotation.Retention;"
+    Print #fileNum, "import java.lang.annotation.RetentionPolicy;"
+    Print #fileNum, "import java.lang.annotation.Target;"
+    Print #fileNum, ""
+    Print #fileNum, "@Retention(RetentionPolicy.RUNTIME)"
+    Print #fileNum, "@Target(ElementType.FIELD)"
+    Print #fileNum, "public @interface CsvUnique {}"
+    Print #fileNum, ""
+
+    ' インポート文
+    Print #fileNum, "import org.supercsv.annotation.CsvRequire;"
+    Print #fileNum, "import org.supercsv.annotation.CsvColumn;"
+    Print #fileNum, "import java.math.BigDecimal;"
+    Print #fileNum, "import java.time.LocalDate;"
+    Print #fileNum, "import java.nio.charset.StandardCharsets;"
+    Print #fileNum, "import java.io.UnsupportedEncodingException;"
+    Print #fileNum, ""
+
+    ' クラス定義
+    Print #fileNum, "public class " & className & " {"
+    Print #fileNum, ""
+
+    ' フィールド定義
+    For i = 2 To lastRow ' 2行目からデータ開始と仮定
+        columnNumber = ws.Cells(i, "B").Value ' ★ B列の値を取得
+        fieldName = ws.Cells(i, "C").Value
+        attributeType = ws.Cells(i, "D").Value
+        byteLimit = ws.Cells(i, "E").Value
+        isRequired = (ws.Cells(i, "F").Value = "〇")
+        isUnique = (ws.Cells(i, "G").Value = "〇") ' ★ G列の値を取得
+
+        Select Case attributeType
+            Case "C" ' 英数字
+                javaType = "String"
+            Case "G" ' 全角
+                javaType = "String"
+            Case "H" ' 年月日
+                javaType = "LocalDate"
+            Case "B" ' 全角＆半角
+                javaType = "String"
+            Case "D" ' 小数
+                javaType = "BigDecimal"
+            Case Else
+                ' 不明な属性タイプの場合はStringとして扱う
+                javaType = "String"
+        End Select
+
+        Print #fileNum, "    @CsvColumn(number = " & columnNumber & ")"
+        If isRequired Then
+            Print #fileNum, "    @CsvRequire"
+        End If
+        If isUnique Then
+            Print #fileNum, "    @CsvUnique" ' ★ ユニークの場合に @CsvUnique を付与
+        End If
+        Print #fileNum, "    private " & javaType & " " & fieldName & ";"
+        Print #fileNum, ""
+    Next i
+
+    ' ゲッターとセッター
+    For i = 2 To lastRow
+        fieldName = ws.Cells(i, "C").Value
+        attributeType = ws.Cells(i, "D").Value
+        byteLimit = ws.Cells(i, "E").Value
+        isRequired = (ws.Cells(i, "F").Value = "〇")
+
+        Select Case attributeType
+            Case "C"
+                javaType = "String"
+            Case "G"
+                javaType = "String"
+            Case "H"
+                javaType = "LocalDate"
+            Case "B"
+                javaType = "String"
+            Case "D"
+                javaType = "BigDecimal"
+            Case Else
+                javaType = "String"
+        End Select
+
+        ' ゲッター
+        Print #fileNum, "    public " & javaType & " get" & Replace(fieldName, " ", "") & "() {"
+        Print #fileNum, "        return " & fieldName & ";"
+        Print #fileNum, ""
+
+        ' セッター (バイト数チェック付き)
+        Print #fileNum, "    public void set" & Replace(fieldName, " ", "") & "(" & javaType & " " & fieldName & ") {"
+        If javaType = "String" Then
+            Print #fileNum, "        if ( " & fieldName & " != null && getByteLength(" & fieldName & ") > " & byteLimit & ") {"
+                Print #fileNum, "            throw new IllegalArgumentException(\""" & fieldName & " のバイト数が " & byteLimit & " バイトを超えています: """ & " + getByteLength(" & fieldName & "));"
+            Print #fileNum, "        }"
+        End If
+        Print #fileNum, "        this." & fieldName & " = " & fieldName & ";"
+        Print #fileNum, ""
+    Next i
+
+    ' バイト数を計算する関数 (UTF-8 前提)
+    Print #fileNum, "    private int getByteLength(String str) {"
+    Print #fileNum, "        if (str == null) {"
+        Print #fileNum, "            return 0;"
+    Print #fileNum, "        }"
+    Print #fileNum, "        return str.getBytes(StandardCharsets.UTF_8).length;"
+    Print #fileNum, ""
+
+    ' クラスの閉じ
+    Print #fileNum, "}"
+
+    Close #fileNum
+
+    MsgBox "Beanクラスの生成が完了しました: " & filePath
+
+End Sub

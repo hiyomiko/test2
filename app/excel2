@@ -1,0 +1,174 @@
+Sub CreateCSVFromExcel()
+
+    ' ● 設定 ●
+    Const DATA_SHEET_NAME As String = "入力データ" ' データ入力シート名
+    Const ERROR_SHEET_NAME As String = "エラー"    ' エラー出力シート名
+    Const CSV_FILE_PATH As String = "C:\output.csv" ' 出力するCSVファイルのパス（必要に応じて変更）
+    Dim wsData As Worksheet
+    Dim wsError As Worksheet
+    Dim lastRow As Long
+    Dim i As Long
+    Dim errorFlag As Boolean
+    Dim errorRow As Long
+
+    ' シートオブジェクトの設定
+    Set wsData = ThisWorkbook.Worksheets(DATA_SHEET_NAME)
+    Set wsError = ThisWorkbook.Worksheets(ERROR_SHEET_NAME)
+
+    ' エラーシートの初期化
+    wsError.Cells.ClearContents
+    wsError.Range("A1:C1").Value = Array("行番号", "項目名", "エラー内容") ' エラーシートの見出し
+    errorRow = 2 ' エラー出力開始行
+
+    ' データ入力シートの最終行を取得
+    lastRow = wsData.Cells(Rows.Count, 1).End(xlUp).Row ' A列を基準に最終行を取得 (必要に応じて変更)
+
+    errorFlag = False ' エラーフラグ初期化
+
+    ' ● 入力値チェック ●
+    For i = 2 To lastRow ' データ入力は2行目から始まる想定
+        ' 受付番号
+        If IsEmpty(wsData.Cells(i, 1).Value) Then
+            Call OutputError(wsError, errorRow, i, "受付番号", "必須項目が未入力です")
+            errorFlag = True
+            errorRow = errorRow + 1
+        End If
+
+        ' 仕向金融機関名
+        If IsEmpty(wsData.Cells(i, 2).Value) Then
+            Call OutputError(wsError, errorRow, i, "仕向金融機関名", "必須項目が未入力です")
+            errorFlag = True
+            errorRow = errorRow + 1
+        End If
+
+        ' 被仕向店名
+        If IsEmpty(wsData.Cells(i, 3).Value) Then
+            Call OutputError(wsError, errorRow, i, "被仕向店名", "必須項目が未入力です")
+            errorFlag = True
+            errorRow = errorRow + 1
+        End If
+
+        ' 預金種類
+        If IsEmpty(wsData.Cells(i, 4).Value) Then
+            Call OutputError(wsError, errorRow, i, "預金種類", "必須項目が未入力です")
+            errorFlag = True
+            errorRow = errorRow + 1
+        End If
+
+        ' 口座番号
+        If IsEmpty(wsData.Cells(i, 5).Value) Then
+            Call OutputError(wsError, errorRow, i, "口座番号", "必須項目が未入力です")
+            errorFlag = True
+            errorRow = errorRow + 1
+        End If
+
+        ' 受取人名
+        If IsEmpty(wsData.Cells(i, 6).Value) Then
+            Call OutputError(wsError, errorRow, i, "受取人名", "必須項目が未入力です")
+            errorFlag = True
+            errorRow = errorRow + 1
+        End If
+
+        ' 入金通貨コード
+        If IsEmpty(wsData.Cells(i, 7).Value) Then
+            Call OutputError(wsError, errorRow, i, "入金通貨コード", "必須項目が未入力です")
+            errorFlag = True
+            errorRow = errorRow + 1
+        End If
+
+        ' 入金額
+        If IsEmpty(wsData.Cells(i, 8).Value) Then
+            Call OutputError(wsError, errorRow, i, "入金額", "必須項目が未入力です")
+            errorFlag = True
+            errorRow = errorRow + 1
+        ElseIf Not IsNumeric(wsData.Cells(i, 8).Value) Then
+            Call OutputError(wsError, errorRow, i, "入金額", "数値で入力してください")
+            errorFlag = True
+            errorRow = errorRow + 1
+        End If
+
+        ' 起票日
+        If IsEmpty(wsData.Cells(i, 9).Value) Then
+            Call OutputError(wsError, errorRow, i, "起票日", "必須項目が未入力です")
+            errorFlag = True
+            errorRow = errorRow + 1
+        ElseIf Not IsDate(wsData.Cells(i, 9).Value) Then
+            Call OutputError(wsError, errorRow, i, "起票日", "日付形式で入力してください")
+            errorFlag = True
+            errorRow = errorRow + 1
+        End If
+
+        ' филиал 受付番号 (ロシア語の項目も同様にチェックを追加)
+        If Not IsEmpty(wsData.Cells(i, 10).Value) And Not IsNumeric(wsData.Cells(i, 10).Value) Then
+            Call OutputError(wsError, errorRow, i, "филиал 受付番号", "数値で入力してください")
+            errorFlag = True
+            errorRow = errorRow + 1
+        End If
+
+        If Not IsEmpty(wsData.Cells(i, 11).Value) And Not IsNumeric(wsData.Cells(i, 11).Value) Then
+            Call OutputError(wsError, errorRow, i, "платежный документ 受付番号", "数値で入力してください")
+            errorFlag = True
+            errorRow = errorRow + 1
+        End If
+
+        If Not IsEmpty(wsData.Cells(i, 12).Value) Then
+            If Not IsDate(wsData.Cells(i, 12).Value) Then
+                Call OutputError(wsError, errorRow, i, "платежный документ Дата", "日付形式で入力してください")
+                errorFlag = True
+                errorRow = errorRow + 1
+            End If
+        End If
+
+    Next i
+
+    ' ● CSV作成 ●
+    If Not errorFlag Then
+        Dim fileNum As Integer
+        Dim outputLine As String
+        fileNum = FreeFile
+
+        Open CSV_FILE_PATH For Output As #fileNum
+
+        ' データ行の出力
+        For i = 2 To lastRow
+            outputLine = ""
+            outputLine = outputLine & Replace(wsData.Cells(i, 1).Value, ",", "") & ","  ' 受付番号
+            outputLine = outputLine & Replace(wsData.Cells(i, 2).Value, ",", "") & ","  ' 仕向金融機関名
+            outputLine = outputLine & Replace(wsData.Cells(i, 3).Value, ",", "") & ","  ' 被仕向店名
+            outputLine = outputLine & Replace(wsData.Cells(i, 4).Value, ",", "") & ","  ' 預金種類
+            outputLine = outputLine & Replace(wsData.Cells(i, 5).Value, ",", "") & ","  ' 口座番号
+            outputLine = outputLine & Replace(wsData.Cells(i, 6).Value, ",", "") & ","  ' 受取人名
+            outputLine = outputLine & Replace(wsData.Cells(i, 7).Value, ",", "") & ","  ' 入金通貨コード
+            outputLine = Replace(wsData.Cells(i, 8).Value, ",", "") & ","  ' 入金額
+            outputLine = Format(wsData.Cells(i, 9).Value, "yyyy/mm/dd") & "," ' 起票日
+            outputLine = Replace(wsData.Cells(i, 10).Value, ",", "") & "," ' филиал 受付番号
+            outputLine = Replace(wsData.Cells(i, 11).Value, ",", "") & "," ' платежный документ 受付番号
+            If IsDate(wsData.Cells(i, 12).Value) Then
+                outputLine = outputLine & Format(wsData.Cells(i, 12).Value, "yyyy/mm/dd") & "," ' платежный документ Дата
+            Else
+                outputLine = outputLine & ","
+            End If
+            outputLine = outputLine & Replace(wsData.Cells(i, 13).Value, ",", "") & "," ' платежный документ Номер
+            outputLine = outputLine & Replace(wsData.Cells(i, 14).Value, ",", "") & "," ' платежный документ БИК Плательщика
+            outputLine = Replace(wsData.Cells(i, 15).Value, ",", "") & "," ' платежный документ Счет Плательщика
+            outputLine = Replace(wsData.Cells(i, 16).Value, ",", "") & "," ' платежный документ ИНН Плательщика
+            outputLine = Replace(wsData.Cells(i, 17).Value, ",", "") & "," ' платежный документ КПП Плательщика
+            outputLine = Replace(wsData.Cells(i, 18).Value, ",", "") & "," ' платежный документ Наименование Плательщика
+            outputLine = Replace(wsData.Cells(i, 19).Value, ",", "") ' платежный документ Назначение Платежа
+            Print #fileNum, outputLine
+        Next i
+
+        Close #fileNum
+        MsgBox "CSVファイルを作成しました：" & CSV_FILE_PATH, vbInformation
+    Else
+        MsgBox "入力エラーがあります。エラーシートを確認してください。", vbCritical
+    End If
+
+End Sub
+
+' エラー出力サブルーチン
+Private Sub OutputError(ws As Worksheet, rowNum As Long, dataRowNum As Long, itemName As String, errorMessage As String)
+    ws.Cells(rowNum, 1).Value = dataRowNum
+    ws.Cells(rowNum, 2).Value = itemName
+    ws.Cells(rowNum, 3).Value = errorMessage
+End Sub

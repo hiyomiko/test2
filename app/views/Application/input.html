@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>入力フォーム</title>
+</head>
+<body>
+    <form action="@{Application.submit()}" method="POST">
+        <label for="name">名前:</label>
+        <input type="text" id="name" name="name"><br>
+
+        <label for="email">メールアドレス:</label>
+        <input type="email" id="email" name="email"><br>
+
+        <label for="address">住所:</label>
+        <textarea id="address" name="address"></textarea><br>
+
+        <input type="submit" value="送信">
+    </form>
+</body>
+</html>

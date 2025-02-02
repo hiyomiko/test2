@@ -5,8 +5,6 @@ import java.util.Date;
 import javax.persistence.Column;
 import javax.persistence.EmbeddedId;
 import javax.persistence.Entity;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
@@ -20,9 +18,7 @@ public class ContractAccount extends play.db.jpa.GenericModel {
     @EmbeddedId
     public ContractAccountId id;
 
-    @ManyToOne
-    @JoinColumn(name = "merchant_id", referencedColumnName = "merchant_no")
-    public Merchant merchant;
+    public Merchant merchant2;
 
     @Column(name = "account_number")
     public int accountNumber;
@@ -35,15 +31,15 @@ public class ContractAccount extends play.db.jpa.GenericModel {
     @Temporal(TemporalType.DATE)
     public Date applyEndDate;
 
-    public ContractAccount() {
-    }
+//    public ContractAccount() {
+//    }
 
-    public ContractAccount(ContractAccountId id, Merchant merchant, int accountNumber, Date applyStartDate, Date applyEndDate) {
-        this.id = id;
-        this.merchant = merchant;
-        this.accountNumber = accountNumber;
-        this.applyStartDate = applyStartDate;
-        this.applyEndDate = applyEndDate;
-    }
+//    public ContractAccount(ContractAccountId id, Merchant merchant, int accountNumber, Date applyStartDate, Date applyEndDate) {
+//        this.id = id;
+//        this.merchant2 = merchant;
+//        this.accountNumber = accountNumber;
+//        this.applyStartDate = applyStartDate;
+//        this.applyEndDate = applyEndDate;
+//    }
 
 }

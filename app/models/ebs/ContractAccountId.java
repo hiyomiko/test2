@@ -23,24 +23,6 @@ public class ContractAccountId implements Serializable {
         this.accountType = accountType;
     }
 
-    // getter, setter (省略)
-
-    public String getContractNo() {
-        return contractNo;
-    }
-
-    public void setContractNo(String contractNo) {
-        this.contractNo = contractNo;
-    }
-
-    public int getAccountType() {
-        return accountType;
-    }
-
-    public void setAccountType(int accountType) {
-        this.accountType = accountType;
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

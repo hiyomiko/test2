@@ -1,12 +1,13 @@
 package models;
 
 import javax.validation.constraints.Min;
-import javax.validation.constraints.NotNull;
 
 import com.github.mygreen.supercsv.annotation.CsvBean;
 import com.github.mygreen.supercsv.annotation.CsvColumn;
+import com.github.mygreen.supercsv.annotation.constraint.CsvEquals;
 import com.github.mygreen.supercsv.annotation.constraint.CsvRequire;
 
+import cellprocessor.CsvCustomConstraint;
 import net.sf.oval.constraint.Email;
 import net.sf.oval.constraint.NotBlank;
 
@@ -16,6 +17,7 @@ public class CsvUser {
 	@CsvColumn(number = 1, label = "Name")
 	@CsvRequire // Required field
 	@NotBlank // Cannot be empty string
+	@CsvCustomConstraint(value = 10)
 	private String name;
 
 	@CsvColumn(number = 2, label = "Email")
@@ -23,9 +25,14 @@ public class CsvUser {
 	private String email;
 
 	@CsvColumn(number = 3, label = "Age")
-    @NotNull(message = "Age is required.") // メッセージを追加
+	@CsvRequire
     @Min(value = 0, message = "Age must be a non-negative number.") // メッセージを追加
 	private Integer age;
+	
+	@CsvEquals(value = "1")
+	@CsvRequire
+	@CsvColumn(number = 4, label = "Type")
+	private String type;
 
 	public String getName() {
 		return name;
@@ -49,6 +56,14 @@ public class CsvUser {
 
 	public void setAge(Integer age) {
 		this.age = age;
+	}
+
+	public String getType() {
+		return type;
+	}
+
+	public void setType(String type) {
+		this.type = type;
 	}
 
 	// Getters and setters omitted

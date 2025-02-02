@@ -33,19 +33,19 @@ public class Merchant extends play.db.jpa.GenericModel {
     @Column(name = "merchant_name")
     public String merchant_name;
 
-    @OneToMany(mappedBy = "merchant", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "merchant2", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     public List<ContractAccount> contractAccounts = new ArrayList<>(); // 初期化を追加
     
     @ManyToOne
     @JoinColumn(name = "due_date_id", referencedColumnName = "id", insertable = false, updatable = false)
     public DueDateCode dueDateCodeRelation; // フィールド名を変更
 
-    public Merchant() {
-    }
-
-    public Merchant(String merchant_no, String merchant_name, DueDateCode dueDateCodeRelation) {
-        this.merchant_no = merchant_no;
-        this.merchant_name = merchant_name;
-        this.dueDateCodeRelation = dueDateCodeRelation;
-    }
+//    public Merchant() {
+//    }
+//
+//    public Merchant(String merchant_no, String merchant_name, DueDateCode dueDateCodeRelation) {
+//        this.merchant_no = merchant_no;
+//        this.merchant_name = merchant_name;
+//        this.dueDateCodeRelation = dueDateCodeRelation;
+//    }
 }

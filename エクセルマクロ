@@ -1,0 +1,243 @@
+Sub GenerateBeanClassFromExcel()
+
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Sheets("クラス作成") ' ★ シート名を適宜変更してください
+
+    Debug.Print "マクロ開始" ' ★ デバッグ出力: マクロ開始
+
+    Dim lastRow As Long
+    lastRow = ws.Cells(Rows.Count, "C").End(xlUp).Row
+
+    Debug.Print "lastRow = " & lastRow ' ★ デバッグ出力: lastRow の値
+
+    Dim className As String
+    className = "GeneratedBean" ' 生成するBeanクラス名
+
+    Dim packageName As String
+    packageName = "com.example.generated" ' 生成するBeanクラスのパッケージ名
+
+    Dim filePath As String
+    filePath = ThisWorkbook.Path & "\" & className & ".java"
+
+    Dim fileNum As Integer
+    fileNum = FreeFile
+
+    Dim i As Long
+    Dim itemName As String      ' C列の項目名
+    Dim fieldName As String     ' D列のフィールド名 (変数名)
+    Dim attributeType As String ' E列の属性タイプ
+    Dim byteLimit As Long      ' F列のバイト数制限
+    Dim javaType As String
+    Dim isRequired As Boolean   ' G列の必須フラグ
+    Dim columnNumber As String  ' B列の番号
+    Dim isUnique As Boolean     ' H列のユニークフラグ
+    Dim fixedValue As String     ' J列の固定値
+
+    Open filePath For Output As #fileNum
+
+    ' パッケージ宣言
+    Print #fileNum, "package " & packageName & ";"
+    Print #fileNum, ""
+
+    ' カスタムアノテーションの定義 (@CsvUnique)
+    Print #fileNum, "import java.lang.annotation.ElementType;"
+    Print #fileNum, "import java.lang.annotation.Retention;"
+    Print #fileNum, "import java.lang.annotation.RetentionPolicy;"
+    Print #fileNum, "import java.lang.annotation.Target;"
+    Print #fileNum, ""
+    Print #fileNum, "@Retention(RetentionPolicy.RUNTIME)"
+    Print #fileNum, "@Target(ElementType.FIELD)"
+    Print #fileNum, "public @interface CsvUnique {}"
+    Print #fileNum, ""
+
+    ' カスタムアノテーションの定義 (@CsvEquals)
+    Print #fileNum, "@Retention(RetentionPolicy.RUNTIME)"
+    Print #fileNum, "@Target(ElementType.FIELD)"
+    Print #fileNum, "public @interface CsvEquals {"
+    Print #fileNum, "    String value();"
+    Print #fileNum, "}"
+    Print #fileNum, ""
+
+   ' ★★★★★ バイト数チェック用カスタムアノテーション（セッターロジックなし）
+    Print #fileNum, "@Retention(RetentionPolicy.RUNTIME)"
+    Print #fileNum, "@Target(ElementType.FIELD)"
+    Print #fileNum, "public @interface CsvValidate {"
+    Print #fileNum, "}"
+    Print #fileNum, ""
+
+    ' ★★★★★ バイト数チェック用カスタムアノテーション
+    Print #fileNum, "@Retention(RetentionPolicy.RUNTIME)"
+    Print #fileNum, "@Target(ElementType.FIELD)"
+    Print #fileNum, "public @interface CsvCustomConstraint {"
+    Print #fileNum, "    int value();"
+    Print #fileNum, "}"
+    Print #fileNum, ""
+
+
+    ' インポート文
+    Print #fileNum, "import org.supercsv.annotation.CsvRequire;"
+    Print #fileNum, "import org.supercsv.annotation.CsvColumn;"
+    Print #fileNum, "import java.math.BigDecimal;"
+    Print #fileNum, "import java.time.LocalDate;"
+    Print #fileNum, "import java.nio.charset.Charset;"
+    Print #fileNum, "import java.nio.charset.StandardCharsets;"
+    Print #fileNum, "import java.io.UnsupportedEncodingException;"
+    Print #fileNum, "import java.lang.reflect.Field;"
+    Print #fileNum, "import java.lang.annotation.Annotation;"
+    Print #fileNum, ""
+
+    ' クラス定義
+    Print #fileNum, "public class " & className & " {"
+    Print #fileNum, ""
+
+    ' フィールド定義
+    For i = 2 To lastRow ' 2行目からデータ開始と仮定
+        Debug.Print "[For Loop Check] Loop Start, i = " & i
+        columnNumber = ws.Cells(i, "B").Value
+        Debug.Print "[Cell Data Check] columnNumber = " & columnNumber
+        itemName = ws.Cells(i, "C").Value
+        Debug.Print "[Cell Data Check] itemName = " & itemName
+        fieldName = ws.Cells(i, "D").Value
+        Debug.Print "[Cell Data Check] fieldName = " & fieldName
+        attributeType = ws.Cells(i, "E").Value
+        Debug.Print "[Cell Data Check] attributeType = " & attributeType
+        Debug.Print "[Cell Data Check] TypeName(attributeType) = " & TypeName(attributeType) ' ★ デバッグ出力: attributeType の型名
+        byteLimit = ws.Cells(i, "F").Value
+        Debug.Print "[Cell Data Check] byteLimit = " & byteLimit
+        isRequired = (ws.Cells(i, "G").Value = "〇")
+        Debug.Print "[Cell Data Check] isRequired = " & isRequired
+        isUnique = (ws.Cells(i, "H").Value = "〇")
+        Debug.Print "[Cell Data Check] isUnique = " & isUnique
+        fixedValue = ws.Cells(i, "J").Value
+        Debug.Print "[Cell Data Check] fixedValue = " & fixedValue
+
+        Select Case attributeType
+            Case "C", "G", "B" ' 英数字、全角、全角＆半角
+                javaType = "String"
+            Case "H" ' 年月日
+                javaType = "LocalDate"
+            Case "D" ' 小数
+                javaType = "BigDecimal"
+            Case Else
+                javaType = "String"
+        End Select
+
+        Print #fileNum, "    @CsvColumn(number = " & columnNumber & ", label = """ & itemName & """)"
+        If isRequired Then
+            Print #fileNum, "    @CsvRequire"
+        End If
+        If isUnique Then
+            Print #fileNum, "    @CsvUnique"
+        End If
+        If fixedValue <> "" Then
+            Print #fileNum, "    @CsvEquals(value = """ & fixedValue & """)"
+        End If
+       ' ★ フィールド定義の直前にカスタムアノテーションを付与
+         If attributeType = "C" Or attributeType = "G" Or attributeType = "B" Then
+            Print #fileNum, "  @CsvCustomConstraint(value = " & byteLimit & ")"
+            Print #fileNum, "   @CsvValidate"
+        End If
+        Print #fileNum, "    private " & javaType & " " & fieldName & ";"
+        Print #fileNum, ""
+    Next i
+
+    ' ゲッターとセッター
+    For i = 2 To lastRow
+        itemName = ws.Cells(i, "C").Value
+        fieldName = ws.Cells(i, "D").Value
+        attributeType = ws.Cells(i, "E").Value
+        byteLimit = ws.Cells(i, "F").Value
+        isRequired = (ws.Cells(i, "G").Value = "〇")
+
+        Select Case attributeType
+            Case "C", "G", "B"
+                javaType = "String"
+            Case "H"
+                javaType = "LocalDate"
+            Case "D"
+                javaType = "BigDecimal"
+            Case Else
+                javaType = "String"
+        End Select
+
+        ' ゲッター
+        Print #fileNum, "    public " & javaType & " get" & Replace(fieldName, " ", "") & "() {"
+        Print #fileNum, "        return " & fieldName & ";"
+        Print #fileNum, ""
+
+        ' セッター (ロジックなし)
+        Print #fileNum, "    public void set" & Replace(fieldName, " ", "") & "(" & javaType & " " & fieldName & ") {"
+          Print #fileNum, "       this." & fieldName & " = " & fieldName & ";"
+        Print #fileNum, "    }"
+        Print #fileNum, ""
+    Next i
+
+  ' ★★★★★ バイト数チェックの共通メソッド（カスタムアノテーション対応）
+    Print #fileNum, "  public void validate(Object obj) {"
+    Print #fileNum, "        try {"
+        Print #fileNum, "          Field[] fields = obj.getClass().getDeclaredFields();"
+        Print #fileNum, "         for(Field field : fields){"
+            Print #fileNum, "             if (field.isAnnotationPresent(CsvValidate.class)) {"
+                Print #fileNum, "                 field.setAccessible(true);"
+                Print #fileNum, "                Object value = field.get(obj);"
+                  Print #fileNum, "             if(value != null && value instanceof String){"
+                            Print #fileNum, "           String strValue = (String)value;"
+                             Print #fileNum, "       Annotation annotation = field.getAnnotation(CsvCustomConstraint.class);"
+                                Print #fileNum, "        if (annotation != null) {"
+                                     Print #fileNum, "        CsvCustomConstraint csvCustomConstraint = (CsvCustomConstraint) annotation;"
+                                         Print #fileNum, "           int byteLength = getByteLengthSJIS(strValue);"
+                                              Print #fileNum, "        if (byteLength > csvCustomConstraint.value()) {"
+                                                        Print #fileNum, "                  throw new IllegalArgumentException();"
+                                                               Print #fileNum, "                }"
+                                      Print #fileNum, "        }"
+                                  Print #fileNum, "      }"
+                           Print #fileNum, "  }"
+                 Print #fileNum, "    }"
+            Print #fileNum, "        } catch (NoSuchFieldException | IllegalAccessException e) {"
+         Print #fileNum, "              System.err.println(""[Java Error] Error in validate: "" + e.getMessage());"
+         Print #fileNum, "        }"
+         Print #fileNum, "    catch(IllegalArgumentException e){"
+          Print #fileNum, "          System.err.println(""[Java Error] Error in validate: Data exceeds maximum byte length."");"
+           Print #fileNum, "         throw e;"
+         Print #fileNum, "    }"
+     Print #fileNum, "   }"
+
+
+    ' SJISでバイト数を計算する関数 (エラーハンドリング強化 + 型チェック版)
+    Print #fileNum, "    private int getByteLengthSJIS(String str) {"
+        Print #fileNum, "        Debug.Print ""[getByteLengthSJIS] Start: str = "" & str" ' デバッグ出力: 関数開始、入力値
+        Print #fileNum, "        If Not VarType(str) = vbString Then" ' ★ 型チェック: String型以外の場合
+            Print #fileNum, "            Debug.Print ""[getByteLengthSJIS] Error: Input is NOT String type. VarType = "" & VarType(str)" ' デバッグ出力: 型エラー
+            Print #fileNum, "            System.err.println(""[Java Error] Error in getByteLengthSJIS: Input is not String type. VarType = "" + VarType(str))" ' Java側にもエラー出力
+            Print #fileNum, "            getByteLengthSJIS = 0 ' エラー時は0を返す"
+            Print #fileNum, "            Exit Function"
+        Print #fileNum, "        End If"
+        Print #fileNum, "        If str = null Then"
+            Print #fileNum, "            Debug.Print ""[getByteLengthSJIS] str is null, return 0""" ' デバッグ出力: null入力
+            Print #fileNum, "            getByteLengthSJIS = 0"
+            Print #fileNum, "            Exit Function"
+        Print #fileNum, "        End If"
+        Print #fileNum, "        Debug.Print ""[getByteLengthSJIS] str is String and NOT null""" ' デバッグ出力: String型かつnullではない
+        Print #fileNum, "        Dim bytes() As Byte"
+        Print #fileNum, "        On Error GoTo ErrorHandler ' VBAエラーハンドリング開始"
+            Print #fileNum, "            Debug.Print ""[getByteLengthSJIS] Trying to get bytes with StrConv(vbFromUnicode)""" ' デバッグ出力: StrConv試行
+            Print #fileNum, "            bytes = StrConv(str, vbFromUnicode)" ' Shift_JISへ変換 (VBAでのShift_JIS変換)
+            Print #fileNum, "            Debug.Print ""[getByteLengthSJIS] StrConv success, bytes length = "" & UBound(bytes) + 1" ' デバッグ出力: 変換成功、バイト数
+            Print #fileNum, "            getByteLengthSJIS = UBound(bytes) + 1" ' バイト数を返す (VBA配列は0始まりなので+1)
+            Print #fileNum, "            Exit Function ' 正常終了"
+        Print #fileNum, "    ErrorHandler:" ' VBAエラーハンドリングラベル
+            Print #fileNum, "            Debug.Print ""[getByteLengthSJIS] Error Handler: Error Number = "" & Err.Number & "", Description = "" & Err.Description" ' デバッグ出力: エラー情報
+            Print #fileNum, "            System.err.println(""[Java Error] Error in getByteLengthSJIS (VBA Fallback): Error Number = "" + Err.Number + "", Description = "" + Err.Description)" ' Java側にもエラー出力 (詳細エラー情報)
+            Print #fileNum, "            getByteLengthSJIS = LenB(StrConv(str, vbFromUnicode)) ' LenBでバイト数取得 (fallback)"
+            Print #fileNum, "            Debug.Print ""[getByteLengthSJIS] Fallback LenB used, returning byte length = "" & getByteLengthSJIS" ' デバッグ出力: Fallback処理、バイト数
+        Print #fileNum, "        On Error GoTo 0 ' VBAエラーハンドリング終了"
+    Print #fileNum, "    End Function"
+
+    ' クラスの閉じ
+    Print #fileNum, "}"
+
+    Close #fileNum
+
+    MsgBox "Beanクラスの生成が完了しました: " & filePath
+
+End Sub

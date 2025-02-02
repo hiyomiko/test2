@@ -18,3 +18,10 @@ GET     /example                                Application.example
 GET     /users/upload               UserController.upload
 POST    /users/processUpload        UserController.processUpload
 GET     /createSampleData          Application.createSampleData
+GET     /your_page             Application.your_page
+GET     /input                      Application.input
+
+# Submit form
+POST    /submit                     Application.submit
+GET     /simple/input              SimpleTest.input
+POST    /simple/submit             SimpleTest.submit

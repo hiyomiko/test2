@@ -1,0 +1,182 @@
+Option Explicit
+
+'==========================================================================================
+' 機能: アクティブシートの情報から super-csv-annotation 用の Java Bean ソースファイルを生成する
+'
+' 事前準備:
+' 1. Excelシートの準備:
+'    - A1セル: Javaクラス名 (例: ProductData)
+'    - 2行目ヘッダー: A列=フィールド名, B列=データ型, C列=CSV列番号, D列=CSVヘッダーラベル
+'    - 3行目以降: 各フィールドの情報
+' 2. VBA参照設定:
+'    - VBAエディタの「ツール」->「参照設定」で「Microsoft Scripting Runtime」にチェックを入れる
+'
+' 作成者: Gemini
+' 作成日: 2025/04/04
+'==========================================================================================
+Sub GenerateCsvBeanJavaFile()
+
+    Dim ws As Worksheet
+    Dim fso As Object ' FileSystemObject
+    Dim ts As Object ' TextStream
+    Dim lastRow As Long
+    Dim i As Long
+    Dim className As String
+    Dim fieldName As String
+    Dim dataType As String
+    Dim csvNumber As String
+    Dim csvLabel As String
+    Dim filePath As String
+    Dim fileContent As String
+    Dim fieldList As Collection ' フィールド情報を保持するコレクション
+    Dim fieldInfo As Dictionary ' 各フィールドの情報 (名前と型)
+
+    ' エラーハンドリング設定
+    On Error GoTo ErrorHandler
+
+    ' --- 初期設定 ---
+    Set ws = ActiveSheet ' 現在アクティブなシートを対象とする
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    Set fieldList = New Collection
+    Set fieldInfo = New Dictionary
+
+    ' --- 入力情報の取得 ---
+    className = ws.Range("A1").Value
+    If Trim(className) = "" Then
+        MsgBox "A1セルにクラス名を入力してください。", vbExclamation
+        Exit Sub
+    End If
+
+    ' 保存ファイルパスの決定 (デスクトップに保存する例)
+    Dim desktopPath As String
+    desktopPath = CreateObject("WScript.Shell").SpecialFolders("Desktop")
+    filePath = desktopPath & "\" & className & ".java"
+
+    ' シートの最終行を取得 (A列基準)
+    lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
+
+    ' フィールド情報が3行目以降にあるかチェック
+    If lastRow < 3 Then
+        MsgBox "3行目以降にフィールド情報が見つかりません。", vbExclamation
+        Exit Sub
+    End If
+
+    ' --- Javaコードの組み立て ---
+    fileContent = "" ' 初期化
+
+    ' import 文
+    fileContent = fileContent & "import com.github.mygreen.supercsv.annotation.CsvBean;" & vbCrLf
+    fileContent = fileContent & "import com.github.mygreen.supercsv.annotation.CsvColumn;" & vbCrLf
+    ' TODO: 必要に応じて他の import 文 (LocalDateなど) を追加してください
+    fileContent = fileContent & "import java.time.LocalDate;" & vbCrLf ' 例: LocalDateを使う場合
+    fileContent = fileContent & vbCrLf
+
+    ' クラス定義開始と @CsvBean アノテーション
+    fileContent = fileContent & "/**" & vbCrLf
+    fileContent = fileContent & " * " & className & " - CSVデータ用Beanクラス (自動生成)" & vbCrLf
+    fileContent = fileContent & " */" & vbCrLf
+    fileContent = fileContent & "@CsvBean" & vbCrLf
+    fileContent = fileContent & "public class " & className & " {" & vbCrLf & vbCrLf
+
+    ' フィールド定義部分の組み立て
+    Dim fieldDefinitions As String
+    fieldDefinitions = ""
+    For i = 3 To lastRow
+        fieldName = Trim(ws.Cells(i, "A").Value)
+        dataType = Trim(ws.Cells(i, "B").Value)
+        csvNumber = Trim(ws.Cells(i, "C").Value)
+        csvLabel = Trim(ws.Cells(i, "D").Value)
+
+        ' 入力チェック (簡易)
+        If fieldName = "" Or dataType = "" Or csvNumber = "" Or csvLabel = "" Then
+            MsgBox i & "行目の情報が不足しています。スキップします。", vbInformation
+        ElseIf Not IsNumeric(csvNumber) Then
+             MsgBox i & "行目のCSV列番号が数字ではありません。スキップします。", vbInformation
+        Else
+            ' @CsvColumn アノテーション
+            fieldDefinitions = fieldDefinitions & "    @CsvColumn(number = " & csvNumber & ", label = """ & csvLabel & """)" & vbCrLf
+            ' フィールド定義
+            fieldDefinitions = fieldDefinitions & "    private " & dataType & " " & fieldName & ";" & vbCrLf & vbCrLf
+
+            ' コンストラクタとGetter/Setter用に情報を保持
+            fieldList.Add fieldName
+            fieldInfo.Add fieldName, dataType
+        End If
+    Next i
+    fileContent = fileContent & fieldDefinitions
+
+    ' デフォルトコンストラクタ
+    fileContent = fileContent & "    /**" & vbCrLf
+    fileContent = fileContent & "     * デフォルトコンストラクタ" & vbCrLf
+    fileContent = fileContent & "     */" & vbCrLf
+    fileContent = fileContent & "    public " & className & "() {}" & vbCrLf & vbCrLf
+
+    ' TODO: 必要であれば全フィールドを引数に取るコンストラクタを生成する処理を追加
+
+    ' Getter / Setter の生成
+    Dim getterSetterDefinitions As String
+    getterSetterDefinitions = ""
+    Dim currentFieldName As Variant
+    Dim currentDataType As String
+    For Each currentFieldName In fieldList
+        currentDataType = fieldInfo(currentFieldName)
+        Dim capitalizedFieldName As String
+        capitalizedFieldName = UCase(Left(currentFieldName, 1)) & Mid(currentFieldName, 2) ' 先頭を大文字に
+
+        ' Getter
+        getterSetterDefinitions = getterSetterDefinitions & "    /**" & vbCrLf
+        getterSetterDefinitions = getterSetterDefinitions & "     * " & currentFieldName & " を取得します。" & vbCrLf
+        getterSetterDefinitions = getterSetterDefinitions & "     * @return " & currentFieldName & vbCrLf
+        getterSetterDefinitions = getterSetterDefinitions & "     */" & vbCrLf
+        getterSetterDefinitions = getterSetterDefinitions & "    public " & currentDataType & " get" & capitalizedFieldName & "() {" & vbCrLf
+        getterSetterDefinitions = getterSetterDefinitions & "        return " & currentFieldName & ";" & vbCrLf
+        getterSetterDefinitions = getterSetterDefinitions & "    }" & vbCrLf & vbCrLf
+
+        ' Setter
+        getterSetterDefinitions = getterSetterDefinitions & "    /**" & vbCrLf
+        getterSetterDefinitions = getterSetterDefinitions & "     * " & currentFieldName & " を設定します。" & vbCrLf
+        getterSetterDefinitions = getterSetterDefinitions & "     * @param " & currentFieldName & " 設定する値" & vbCrLf
+        getterSetterDefinitions = getterSetterDefinitions & "     */" & vbCrLf
+        getterSetterDefinitions = getterSetterDefinitions & "    public void set" & capitalizedFieldName & "(" & currentDataType & " " & currentFieldName & ") {" & vbCrLf
+        getterSetterDefinitions = getterSetterDefinitions & "        this." & currentFieldName & " = " & currentFieldName & ";" & vbCrLf
+        getterSetterDefinitions = getterSetterDefinitions & "    }" & vbCrLf & vbCrLf
+    Next currentFieldName
+    fileContent = fileContent & getterSetterDefinitions
+
+    ' クラス定義終了
+    fileContent = fileContent & "}" & vbCrLf
+
+    ' --- ファイルへの書き込み ---
+    ' UTF-8でファイルを書き込む (BOMなしUTF-8)
+    Set ts = fso.CreateTextFile(filePath, True, False) ' True: 上書き許可, False: Unicodeではない(ANSI/UTF-8)
+    ' ADODB.Stream を使ってBOMなしUTF-8にする方法がより確実ですが、ここでは簡略化
+    ts.Write fileContent
+    ts.Close
+
+    ' --- 後処理 ---
+    Set ts = Nothing
+    Set fso = Nothing
+    Set fieldList = Nothing
+    Set fieldInfo = Nothing
+    Set ws = Nothing
+
+    MsgBox className & ".java を以下の場所に作成しました:" & vbCrLf & filePath, vbInformation
+    Exit Sub
+
+ErrorHandler:
+    MsgBox "エラーが発生しました。" & vbCrLf & "エラー番号: " & Err.Number & vbCrLf & "エラー内容: " & Err.Description, vbCritical
+    ' エラー発生時もオブジェクトを解放する
+    If Not ts Is Nothing Then
+        If ts.AtEndOfStream = False Then ' ストリームが開いている場合のみクローズ試行
+           On Error Resume Next ' クローズエラーは無視
+           ts.Close
+           On Error GoTo 0 ' エラーハンドリングを元に戻す
+        End If
+        Set ts = Nothing
+    End If
+    Set fso = Nothing
+    Set fieldList = Nothing
+    Set fieldInfo = Nothing
+    Set ws = Nothing
+
+End Sub

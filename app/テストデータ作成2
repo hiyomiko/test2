@@ -1,0 +1,96 @@
+Sub CreateCsvWithMetadata()
+
+    Dim ws As Worksheet
+    Dim filePath As String
+    Dim lastRow As Long
+    Dim i As Long
+    Dim j As Long
+    Dim outputLine As String
+    Dim fso As Object ' FileSystemObject
+    Dim ts As Object  ' TextStream
+
+    ' 設定
+    Set ws = ThisWorkbook.ActiveSheet ' アクティブなシートを対象とする
+    filePath = "C:\temp\output.csv"   ' 出力するCSVファイルのパスと名前（必要に応じて変更してください）
+
+    ' ヘッダー行の最終列を取得
+    lastCol = ws.Cells(1, Columns.Count).End(xlToLeft).Column
+    ' データ行の最終行を取得
+    lastRow = ws.Cells(Rows.Count, 1).End(xlUp).Row
+
+    ' FileSystemObjectの作成
+    Set fso = CreateObject("Scripting.FileSystemObject")
+
+    ' CSVファイルを開いて書き込み（存在する場合は上書き）
+    Set ts = fso.CreateTextFile(filePath, True, False) ' True: 上書き, False: Unicode
+
+    ' ① ヘッダー行の書き込み
+    For j = 1 To lastCol
+        outputLine = outputLine & ws.Cells(1, j).Value
+        If j < lastCol Then
+            outputLine = outputLine & ","
+        End If
+    Next j
+    ts.WriteLine outputLine
+    outputLine = ""
+
+    ' ② 型指定行の書き込み
+    For j = 1 To lastCol
+        ' ここでは簡易的な型判定を行っています。必要に応じてより厳密な判定を追加してください。
+        If IsNumeric(ws.Cells(5, j).Value) Then ' 5行目の最初のデータで判定
+            outputLine = outputLine & "数値"
+        Else
+            outputLine = outputLine & "文字列"
+        End If
+        If j < lastCol Then
+            outputLine = outputLine & ","
+        End If
+    Next j
+    ts.WriteLine outputLine
+    outputLine = ""
+
+    ' ③ 桁数行の書き込み
+    For j = 1 To lastCol
+        ' ここでは文字列の長さを桁数としています。数値の場合は適切な桁数を指定してください。
+        outputLine = outputLine & Len(Trim(ws.Cells(5, j).Value)) ' 5行目の最初のデータで判定
+        If j < lastCol Then
+            outputLine = outputLine & ","
+        End If
+    Next j
+    ts.WriteLine outputLine
+    outputLine = ""
+
+    ' ④ 固定値行の書き込み
+    For j = 1 To lastCol
+        ' ここではA4セル以降に固定値が入力されていると仮定しています。
+        ' 固定値がない場合は空文字("")を出力します。
+        If ws.Cells(4, j).Value <> "" Then
+            outputLine = outputLine & ws.Cells(4, j).Value
+        Else
+            outputLine = outputLine & ""
+        End If
+        If j < lastCol Then
+            outputLine = outputLine & ","
+        End If
+    Next j
+    ts.WriteLine outputLine
+    outputLine = ""
+
+    ' ⑤ データ行の書き込み
+    For i = 5 To lastRow
+        For j = 1 To lastCol
+            outputLine = outputLine & ws.Cells(i, j).Value
+            If j < lastCol Then
+                outputLine = outputLine & ","
+            End If
+        Next j
+        ts.WriteLine outputLine
+        outputLine = ""
+    Next i
+
+    ' ファイルを閉じる
+    ts.Close
+
+    MsgBox "CSVファイルを作成しました：" & filePath
+
+End Sub

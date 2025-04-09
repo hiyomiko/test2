@@ -1,0 +1,67 @@
+#{!-- app/views/YourController/showForm.html --}
+#{extends 'main.html' /}
+#{set title:'データ入力フォーム' /}
+
+<h1>データ入力</h1>
+
+#{ifErrors}
+    <div class="alert alert-danger" role="alert">
+        <p><strong>入力エラーがあります:</strong></p>
+        <ul>
+            #{errors}
+                <li>${error}</li>
+            #{/errors}
+        </ul>
+    </div>
+#{/ifErrors}
+
+#{form @YourController.saveData(), method:'POST'}
+
+    {# --- 既存の項目 --- #}
+    <div class="mb-3">
+        <label for="existingParam1" class="form-label">既存項目1:</label>
+        <input type="text" id="existingParam1" name="existingParam1" value="${flash['existingParam1'] ?: ''}" class="form-control">
+        {# 既存項目のエラー表示が必要な場合、別途対応 #}
+    </div>
+     <div class="mb-3">
+        <label for="existingParam2" class="form-label">既存項目2:</label>
+        <input type="number" id="existingParam2" name="existingParam2" value="${flash['existingParam2'] ?: ''}" class="form-control">
+         {# 既存項目のエラー表示が必要な場合、別途対応 #}
+    </div>
+
+    <hr>
+
+    {# --- 追加する項目 --- #}
+    <div class="mb-3 #{ifError 'additionalForm.newItemA'}has-error#{/ifError}">
+        <label for="newItemA" class="form-label">追加項目A:</label>
+        <input type="text" id="newItemA" name="additionalForm.newItemA" value="${flash['additionalForm.newItemA']}" class="form-control">
+        #{ifError 'additionalForm.newItemA'}
+            <span class="error help-block">#{error 'additionalForm.newItemA' /}</span>
+        #{/ifError}
+    </div>
+
+    <div class="mb-3 #{ifError 'additionalForm.newItemB'}has-error#{/ifError}">
+        <label for="newItemB" class="form-label">追加項目B:</label>
+        <input type="number" id="newItemB" name="additionalForm.newItemB" value="${flash['additionalForm.newItemB']}" class="form-control">
+        #{ifError 'additionalForm.newItemB'}
+            <span class="error help-block">#{error 'additionalForm.newItemB' /}</span>
+        #{/ifError}
+    </div>
+
+    <div class="mb-3 #{ifError 'additionalForm.optionalEmail'}has-error#{/ifError}">
+        <label for="optionalEmail" class="form-label">任意メールアドレス:</label>
+        <input type="email" id="optionalEmail" name="additionalForm.optionalEmail" value="${flash['additionalForm.optionalEmail']}" class="form-control">
+        #{ifError 'additionalForm.optionalEmail'}
+            <span class="error help-block">#{error 'additionalForm.optionalEmail' /}</span>
+        #{/ifError}
+    </div>
+
+
+    <button type="submit" class="btn btn-primary">保存</button>
+#{/form}
+
+<style>
+/* エラー表示用のスタイル (前の回答と同じ) */
+.has-error .form-control { border-color: #dc3545; }
+.has-error .help-block { color: #dc3545; font-size: 0.875em; }
+</style>

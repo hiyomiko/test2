@@ -1,0 +1,28 @@
+# Standard Play validation messages (override or add as needed)
+validation.required=必須項目です
+validation.required.name=名前は必須です
+validation.required.email=Emailは必須です
+validation.required.description=説明は必須です
+validation.required.startDate=開始日は必須です
+validation.required.endDate=終了日は必須です
+validation.email=有効なEメールアドレスを入力してください
+validation.email.format=Eメールの形式が正しくありません
+validation.maxSize=最大%{1}文字までです
+validation.maxSize.name=名前は%{1}文字以内で入力してください
+validation.min=最小%{1}です
+validation.min.value1=値1は%{1}以上で入力してください
+validation.range=%{1}から%{2}の間で入力してください
+validation.range.value2=値2は%{1}から%{2}の間で入力してください
+
+# Custom validation messages
+validation.byteSize=最大%{max}バイト (%{encoding}) までです
+validation.byteSize.description=説明は%{max}バイト (%{encoding}) 以内で入力してください
+validation.dateRange=期間の指定が正しくありません
+validation.dateRange.message=終了日は開始日以降の日付を入力してください
+validation.encodingError=内部エラー: 文字エンコーディング '%{encoding}' はサポートされていません
+validation.internalError=内部バリデーションエラーが発生しました
+
+# Controller flash messages
+data.saved.success=データが正常に登録されました。 ID: %d
+data.updated.success=データが正常に更新されました。 ID: %d
+data.save.error=データの保存中にエラーが発生しました: %s

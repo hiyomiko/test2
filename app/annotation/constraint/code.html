@@ -1,0 +1,112 @@
+#{extends 'main.html' /}
+#{set title: myForm.id == null ? '新規登録フォーム' : '編集フォーム (ID: ' + myForm.id + ')' /}
+
+<h1>${myForm.id == null ? '新規登録フォーム' : '編集フォーム (ID: ' + myForm.id + ')'}</h1>
+
+#{if flash.error}
+    <p class="alert alert-danger">${flash.error}</p>
+#{/if}
+#{if flash.success}
+    <p class="alert alert-success">${flash.success}</p>
+#{/if}
+
+#{if validation.hasErrors()}
+    <div class="alert alert-danger">
+        <p>入力内容にエラーがあります。確認してください。</p>
+        <ul>
+            #{validation.errors().sort().each var:'error'}
+                <li>${error.message()}</li>
+            #{/validation.errors().sort().each}
+        </ul>
+    </div>
+#{/if}
+
+#{form @Application.submitForm(), id:'myForm'}
+    #{if myForm.id != null}
+        <input type="hidden" name="myForm.id" value="${myForm.id}" />
+    #{/if}
+
+    *{ ----- 各フィールドの定義 ----- }*
+
+    #{field 'myForm.name'}
+        <div class="form-group ${field.errorClass ? 'has-error' : ''}">
+            <label for="${field.id}">名前:</label>
+            <input type="text" id="${field.id}" name="${field.name}" value="${field.value ?: myForm?.name}" class="form-control" />
+            #{if field.error}<span class="help-block">${field.error}</span>#{/if}
+            <small class="form-text text-muted">必須, 50文字以内</small>
+        </div>
+    #{/field}
+
+    #{field 'myForm.email'}
+        <div class="form-group ${field.errorClass ? 'has-error' : ''}">
+            <label for="${field.id}">Email:</label>
+            <input type="email" id="${field.id}" name="${field.name}" value="${field.value ?: myForm?.email}" class="form-control" />
+            #{if field.error}<span class="help-block">${field.error}</span>#{/if}
+             <small class="form-text text-muted">必須, Eメール形式, 100文字以内</small>
+        </div>
+    #{/field}
+
+    #{field 'myForm.description'}
+        <div class="form-group ${field.errorClass ? 'has-error' : ''}">
+            <label for="${field.id}">説明:</label>
+            <textarea id="${field.id}" name="${field.name}" class="form-control" rows="4">${field.value ?: myForm?.description}</textarea>
+            #{if field.error}<span class="help-block">${field.error}</span>#{/if}
+             <small class="form-text text-muted">必須, 1024バイト (UTF-8) 以内</small>
+        </div>
+    #{/field}
+
+    #{field 'myForm.startDate'}
+        <div class="form-group ${field.errorClass ? 'has-error' : ''}">
+            <label for="${field.id}">開始日:</label>
+            <input type="date" id="${field.id}" name="${field.name}" value="${field.value?.format('yyyy-MM-dd') ?: myForm?.startDate?.format('yyyy-MM-dd')}" class="form-control" />
+            #{if field.error}<span class="help-block">${field.error}</span>#{/if}
+             <small class="form-text text-muted">必須, yyyy-MM-dd</small>
+        </div>
+    #{/field}
+
+    #{field 'myForm.endDate'}
+        <div class="form-group ${field.errorClass ? 'has-error' : ''}">
+            <label for="${field.id}">終了日:</label>
+            <input type="date" id="${field.id}" name="${field.name}" value="${field.value?.format('yyyy-MM-dd') ?: myForm?.endDate?.format('yyyy-MM-dd')}" class="form-control" />
+             *{ Play 1 の #{error} はフィールドに紐づかないクラスレベルエラーを表示しにくい場合がある }*
+             *{ そのため、field.error を使うか、クラスレベルエラーは別途表示する }*
+            #{if field.error || validation.hasError('myForm.endDate')}<span class="help-block">${field.error ?: validation.error('myForm.endDate')?.message()}</span>#{/if}
+             <small class="form-text text-muted">必須, yyyy-MM-dd, 開始日以降</small>
+        </div>
+    #{/field}
+
+     *{ ----- 他のフィールドも同様に #{field} タグで囲む ----- }*
+     #{field 'myForm.value1'}
+        <div class="form-group ${field.errorClass ? 'has-error' : ''}">
+            <label for="${field.id}">値1:</label>
+            <input type="number" id="${field.id}" name="${field.name}" value="${field.value ?: myForm?.value1}" class="form-control" />
+            #{if field.error}<span class="help-block">${field.error}</span>#{/if}
+            <small class="form-text text-muted">0以上</small>
+        </div>
+    #{/field}
+
+     #{field 'myForm.value2'}
+        <div class="form-group ${field.errorClass ? 'has-error' : ''}">
+            <label for="${field.id}">値2:</label>
+            <input type="number" id="${field.id}" name="${field.name}" value="${field.value ?: myForm?.value2}" class="form-control" />
+            #{if field.error}<span class="help-block">${field.error}</span>#{/if}
+             <small class="form-text text-muted">1から100の間</small>
+        </div>
+    #{/field}
+
+     *{ ----- さらに他のフィールドを追加 ----- }*
+
+    <div class="form-group">
+        <button type="submit" class="btn btn-primary">${myForm.id == null ? '登録する' : '更新する'}</button>
+        <a href="@{Application.index()}" class="btn btn-secondary">キャンセル</a>
+    </div>
+
+#{/form}
+
+<style>
+    .has-error .form-control { border-color: #dc3545; }
+    .help-block { color: #dc3545; font-size: 0.8em;}
+    .alert { padding: 15px; margin-bottom: 20px; border: 1px solid transparent; border-radius: 4px; }
+    .alert-danger { color: #721c24; background-color: #f8d7da; border-color: #f5c6cb; }
+    .alert-success { color: #155724; background-color: #d4edda; border-color: #c3e6cb; }
+</style>

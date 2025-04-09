@@ -1,0 +1,71 @@
+// app/controllers/YourController.java
+package controllers;
+
+import play.*;
+import play.mvc.*;
+import play.data.validation.*;
+import models.forms.AdditionalParamsForm; // 作成したフォームオブジェクト
+
+public class YourController extends Controller {
+
+    // 既存のアクションメソッド (引数はそのまま)
+    public static void saveData(String existingParam1, Integer existingParam2 /*, ...他の既存パラメータ */) {
+
+        // --- 追加項目の処理 ---
+        // 1. 追加項目用のフォームオブジェクトをインスタンス化
+        AdditionalParamsForm additionalForm = new AdditionalParamsForm();
+
+        // 2. リクエストパラメータをフォームオブジェクトにバインド
+        //    params.bind() を使うと、指定したプレフィックスを持つパラメータをバインドできる
+        //    ビューの input name属性を "additionalForm.newItemA" のようにする必要がある
+        params.bind(additionalForm, "additionalForm");
+        // または、個別にパラメータを取得してセットすることも可能
+        // additionalForm.newItemA = params.get("additionalForm.newItemA");
+        // String newItemBStr = params.get("additionalForm.newItemB");
+        // if (newItemBStr != null && !newItemBStr.isEmpty()) {
+        //     try {
+        //        additionalForm.newItemB = Integer.parseInt(newItemBStr);
+        //     } catch (NumberFormatException e) { /* エラー処理 */ }
+        // }
+        // additionalForm.optionalEmail = params.get("additionalForm.optionalEmail");
+
+
+        // 3. 追加項目フォームオブジェクトに対してバリデーションを実行
+        validation.valid(additionalForm);
+
+        // --- バリデーション結果のチェック ---
+        if (validation.hasErrors()) {
+            // バリデーションエラーがある場合
+            // 既存のパラメータと追加項目の両方の値をFlashスコープに保持
+            params.flash(); // これで "existingParam1", "additionalForm.newItemA" などが保持される
+            validation.keep(); // バリデーションエラー情報を保持
+            
+            // 元のフォーム画面にリダイレクトまたはレンダリング
+            // (元の画面表示用のアクションを呼び出すか、render() する)
+            showForm(); // 例: フォーム表示用アクションを呼び出す
+            return; // 処理を中断
+        }
+
+        // --- バリデーション成功時の処理 ---
+        // ここに到達した場合、追加項目のバリデーションは成功している
+        
+        // 既存のパラメータ (existingParam1, existingParam2) と
+        // 追加項目のデータ (additionalForm.newItemA, additionalForm.newItemB など)
+        // を使って、データベースへの保存などのビジネスロジックを実行する
+
+        Logger.info("既存パラメータ1: %s", existingParam1);
+        Logger.info("追加項目A: %s", additionalForm.newItemA);
+        Logger.info("追加項目B: %d", additionalForm.newItemB);
+
+        flash.success("データを保存しました。");
+        // 成功後の画面へリダイレクトなど
+        Application.index();
+    }
+
+    // フォーム表示用のアクション (例)
+    public static void showForm() {
+        // 必要であれば初期値を設定してフォームを表示
+        render(); // app/views/YourController/showForm.html をレンダリング想定
+    }
+
+}

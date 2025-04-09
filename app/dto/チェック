@@ -1,0 +1,20 @@
+// app/models/forms/AdditionalParamsForm.java (例)
+package models.forms;
+
+import play.data.validation.*;
+
+public class AdditionalParamsForm {
+
+    @Required(message = "追加項目Aは必須です")
+    @MaxSize(value = 100, message = "追加項目Aは100文字以内で入力してください")
+    public String newItemA;
+
+    @Required(message = "追加項目Bは必須です")
+    @Min(value = 1, message = "追加項目Bは1以上で入力してください")
+    public Integer newItemB;
+
+    @Email(message = "有効なメールアドレス形式で入力してください")
+    public String optionalEmail; // 任意入力項目
+
+    // 必要であればコンストラクタなど
+}

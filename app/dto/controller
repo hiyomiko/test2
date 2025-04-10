@@ -1,0 +1,101 @@
+package controllers;
+
+import play.*;
+import play.mvc.*;
+import play.data.validation.*;
+import models.MyForm;
+import java.util.*;
+
+public class Application extends Controller {
+
+    // ... (showForm, index などは変更なし) ...
+
+    /**
+     * フォーム送信処理 (手動バリデーション)
+     * @param myForm リクエストパラメータがバインドされたオブジェクト (@Validなし)
+     */
+    public static void submitForm(MyForm myForm) { // <-- @Valid を削除
+
+        Logger.info("Received form submission for MyForm (ID: %s)", myForm.id);
+
+        // --- 1. バリデーション前の処理 (例: 権限チェック) ---
+        if (!checkUserPermission(myForm)) { // 権限チェックメソッドを呼び出す
+            Logger.warn("Permission denied for user '%s' to submit/update form ID: %s", session.get("username"), myForm.id);
+            // 権限がない場合のエラー処理 (例: forbiddenページ表示)
+            forbidden("この操作を行う権限がありません。");
+            // または、エラーメッセージと共にフォームに戻す
+            // flash.error("この操作を行う権限がありません。");
+            // params.flash(); // フォームデータを保持する場合
+            // renderTemplate("Application/showForm.html", myForm); // フォーム再表示
+            // return; // 処理を中断
+        }
+        Logger.info("Permission check passed for form ID: %s", myForm.id);
+
+        // --- 2. 手動でバリデーションを実行 ---
+        Logger.info("Manually triggering validation for MyForm object...");
+        Validation.valid(myForm); // ここでアノテーションベースのバリデーションを実行
+
+        // --- 3. バリデーション結果の確認と処理 ---
+        if (validation.hasErrors()) {
+            Logger.warn("Manual validation failed with errors: %s", validation.errorsMap());
+            // バリデーションエラーがある場合の処理 (通常通り)
+            params.flash(); // 入力値をFlashスコープに保持
+            validation.keep(); // エラーメッセージをFlashスコープに保持
+            // エラーのあったオブジェクトを渡してフォームを再描画
+            // render("@showForm", myForm); // render shortcut
+            renderTemplate("Application/showForm.html", myForm); // 明示的にテンプレート指定
+        } else {
+            // バリデーション成功時の処理
+            Logger.info("Manual validation successful.");
+            try {
+                // 登録・更新処理 (JPAを使う場合など)
+                myForm.save(); // JPA Model の save メソッド
+                // 登録か更新かの判定は save 前の myForm.id の有無などで判断
+                if (/* is new? */ myForm.getId() == null) { // save後のIDで判定するなら処理後に
+                     flash.success("データが正常に登録されました。");
+                } else {
+                    flash.success("データが正常に更新されました。 ID: %d", myForm.id);
+                }
+                Logger.info("Successfully saved record with ID: %d", myForm.id);
+
+                // 成功したら詳細表示やフォーム再表示（編集モード）
+                showForm(myForm.id);
+
+            } catch (Exception e) {
+                Logger.error(e, "Error saving form data after manual validation for ID: %s", myForm.id);
+                flash.error("データの保存中にエラーが発生しました: %s", e.getMessage());
+                params.flash(); // Keep form data on error
+                // DBエラーなども表示するためにフォームに戻す
+                // validation.keep(); // バリデーションエラーはないが念のため
+                renderTemplate("Application/showForm.html", myForm);
+            }
+        }
+    }
+
+    /**
+     * ダミーの権限チェックメソッド
+     * @param myForm 操作対象のオブジェクト
+     * @return 権限があれば true, なければ false
+     */
+    private static boolean checkUserPermission(MyForm myForm) {
+        // ここに実際の権限チェックロジックを実装します。
+        // 例: session からユーザー情報を取得し、
+        //    そのユーザーが myForm (新規 or 既存) に対する操作権限を持つか確認する。
+        String loggedInUser = session.get("username"); // セッションからユーザー名取得 (例)
+        if (loggedInUser == null) {
+            return false; // ログインしていなければ false
+        }
+
+        // 新規作成の場合と更新の場合でチェックを分けるなど
+        if (myForm.id == null) {
+            // 新規作成権限のチェック
+            return loggedInUser.equals("admin"); // 例: admin のみ新規作成可能
+        } else {
+            // 更新権限のチェック
+            // 例: admin またはオブジェクトの所有者のみ更新可能
+            // MyForm loadedForm = MyForm.findById(myForm.id); // DBから取得して所有者を確認するなど
+            // return loggedInUser.equals("admin") || loggedInUser.equals(loadedForm.owner);
+            return true; // ダミー実装: ログインしていれば更新OK
+        }
+    }
+}

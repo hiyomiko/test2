@@ -1,0 +1,17 @@
+package annotations;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+import net.sf.oval.configuration.annotation.Constraint;
+import play.data.validation.Validation; // play.data.validation.* を使う
+
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.FIELD, ElementType.PARAMETER})
+@Constraint(checkWith = CheckByteSizeCheck.class)
+public @interface CheckByteSize {
+    String message() default "validation.byteSize"; // エラーメッセージキー
+    int max(); // 最大バイト数
+    String encoding() default "UTF-8"; // デフォルトエンコーディング
+}

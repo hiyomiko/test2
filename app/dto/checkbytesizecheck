@@ -1,0 +1,83 @@
+package annotations;
+
+import java.io.UnsupportedEncodingException;
+import java.util.HashMap;
+import java.util.Map;
+import net.sf.oval.Validator;
+import net.sf.oval.configuration.annotation.AbstractAnnotationCheck;
+import net.sf.oval.context.OValContext;
+import net.sf.oval.exception.OValException;
+import play.Logger;
+// Validation クラスは直接エラーを追加する場合を除き、通常は不要
+// import play.data.validation.Validation;
+import play.exceptions.UnexpectedException;
+
+public class CheckByteSizeCheck extends AbstractAnnotationCheck<CheckByteSize> {
+
+    // アノテーションから受け取る値を保持するフィールド
+    private int max;
+    private String encoding;
+
+    /**
+     * アノテーションから設定値を取得し、メッセージキーをOValに登録する
+     */
+    @Override
+    public void configure(CheckByteSize annotation) {
+        this.max = annotation.max();
+        this.encoding = annotation.encoding();
+        // アノテーションで指定されたメッセージキーをOValに設定
+        setMessage(annotation.message());
+    }
+
+    /**
+     * メッセージ内のプレースホルダー (%{max}, %{encoding} など) に
+     * 対応する値をMapで返す。isSatisfiedがfalseの場合にOValから呼び出される。
+     */
+    @Override
+    public Map<String, String> createMessageVariables() {
+        Map<String, String> messageVariables = new HashMap<>();
+        // キー名は conf/messages のプレースホルダー名と一致させる
+        messageVariables.put("max", String.valueOf(this.max));
+        messageVariables.put("encoding", this.encoding);
+        return messageVariables;
+    }
+
+    /**
+     * バリデーションロジックを実行する
+     * @return 条件を満たせば true, 満たさなければ false
+     */
+    @Override
+    public boolean isSatisfied(Object validatedObject, Object value, OValContext context, Validator validator) throws OValException {
+        // @Required などでチェックされるべきnullや型違いはtrueを返す
+        if (value == null || !(value instanceof String)) {
+            return true;
+        }
+        String stringValue = (String) value;
+        // 空文字列も @Required などでチェックされるべきなのでtrueを返す
+        if (stringValue.isEmpty()) {
+            return true;
+        }
+
+        try {
+            // バイトサイズを計算
+            byte[] bytes = stringValue.getBytes(encoding);
+            // 条件を満たすかチェックし、結果を返す
+            boolean satisfied = bytes.length <= max;
+
+            // --- validator.setMessageVariables の呼び出しは削除 ---
+
+            return satisfied; // 単純に結果を返す
+
+        } catch (UnsupportedEncodingException e) {
+            // エンコーディングが不正な場合はログを出力し、バリデーション失敗とする
+            Logger.error(e, "Unsupported Encoding during validation: %s", encoding);
+            // 必要であれば、エンコーディングエラー用の別のメッセージキーを設定する
+            setMessage("validation.encodingError");
+            // createMessageVariables は encoding の値を提供できるので、
+            // conf/messages に validation.encodingError=%{encoding} はサポートされていません のようなメッセージを定義できる
+            return false; // バリデーション失敗
+            // もしくは UnexpectedException を throw する選択肢もある
+            // throw new UnexpectedException("Unsupported Encoding for validation", e);
+        }
+    }
+}

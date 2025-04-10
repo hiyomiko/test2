@@ -1,0 +1,79 @@
+#{extends 'main.html' /}
+#{set title: entityId == null ? '新規登録' : '編集 (ID: ' + entityId + ')' /}
+
+<h1>${entityId == null ? '新規登録' : '編集'}</h1>
+
+#{if validation.hasErrors()}
+    <div class="alert alert-danger">
+        <ul>
+            #{validation.errors().sort().each var:'error'}
+                <li>${error.message()} (${error.key()})</li>
+            #{/validation.errors().sort().each}
+        </ul>
+    </div>
+#{/if}
+#{if flash.error} <p class="alert alert-danger">${flash.error}</p> #{/if}
+#{if flash.success} <p class="alert alert-success">${flash.success}</p> #{/if}
+
+#{form @Application.submitForm(entityId: entityId), id:'mixedForm'}
+    *{ entityId を hidden で送る (更新の場合) }*
+    #{if entityId != null}
+        <input type="hidden" name="entityId" value="${entityId}" />
+    #{/if}
+
+    *{ ----- 既存項目 ----- }*
+    <div class="form-group ${validation.hasError('name') ? 'has-error' : ''}">
+        <label for="nameInput">名前:</label>
+        *{ name属性はコントローラーの引数名に合わせる }*
+        <input type="text" id="nameInput" name="name" value="${flash['name'] ?: name}" class="form-control" />
+        #{if validation.hasError('name')}<span class="help-block">${validation.error('name').message()}</span>#{/if}
+    </div>
+
+    <div class="form-group ${validation.hasError('email') ? 'has-error' : ''}">
+        <label for="emailInput">Email:</label>
+        <input type="email" id="emailInput" name="email" value="${flash['email'] ?: email}" class="form-control" />
+        #{if validation.hasError('email')}<span class="help-block">${validation.error('email').message()}</span>#{/if}
+    </div>
+    *{ ... 他の既存項目も同様 ... }*
+
+
+    *{ ----- 新しい項目 (newFieldsオブジェクト) ----- }*
+    *{ #{field} タグを使うにはオブジェクト名 'newFields' を指定 }*
+    #{field 'newFields.description'}
+        <div class="form-group ${field.errorClass ? 'has-error' : ''}">
+            <label for="${field.id}">説明:</label>
+            *{ name属性は 'newFields.description' になる }*
+            <textarea id="${field.id}" name="${field.name}" class="form-control" rows="4">${field.value ?: newFields?.description}</textarea>
+            #{if field.error}<span class="help-block">${field.error}</span>#{/if}
+        </div>
+    #{/field}
+
+    #{field 'newFields.startDate'}
+        <div class="form-group ${field.errorClass ? 'has-error' : ''}">
+            <label for="${field.id}">開始日:</label>
+            <input type="date" id="${field.id}" name="${field.name}" value="${field.value?.format('yyyy-MM-dd') ?: newFields?.startDate?.format('yyyy-MM-dd')}" class="form-control" />
+            #{if field.error}<span class="help-block">${field.error}</span>#{/if}
+        </div>
+    #{/field}
+
+    #{field 'newFields.endDate'}
+        *{ クラスレベルアノテーションのエラーも考慮 }*
+        <div class="form-group ${field.errorClass || validation.hasError('newFields.endDate') ? 'has-error' : ''}">
+            <label for="${field.id}">終了日:</label>
+            <input type="date" id="${field.id}" name="${field.name}" value="${field.value?.format('yyyy-MM-dd') ?: newFields?.endDate?.format('yyyy-MM-dd')}" class="form-control" />
+            #{if field.error || validation.hasError('newFields.endDate')}
+                 <span class="help-block">${field.error ?: validation.error('newFields.endDate')?.message()}</span>
+             #{/if}
+        </div>
+    #{/field}
+
+    *{ ... 他の新しい項目も #{field 'newFields.fieldName'} で ... }*
+
+
+    <div class="form-group">
+        <button type="submit" class="btn btn-primary">${entityId == null ? '登録' : '更新'}</button>
+        <a href="@{Application.index()}" class="btn btn-secondary">キャンセル</a>
+    </div>
+#{/form}
+
+<style>...</style>

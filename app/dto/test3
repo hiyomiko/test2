@@ -1,0 +1,72 @@
+// app/controllers/Application.java
+package controllers;
+
+import play.*;
+import play.mvc.*;
+import play.data.validation.*;
+import models.MyData;
+import java.util.*;
+
+public class Application extends Controller {
+
+    public static void index() {
+        List<MyData> dataList = MyData.findAll();
+        render(dataList);
+    }
+
+    public static void edit(Long id) {
+        MyData data = MyData.findById(id);
+        if (data == null) {
+            notFound("Data not found with id: " + id);
+        }
+        render(data);
+    }
+
+    public static void save(Long id, @Valid MyData data) {
+
+        if (validation.hasErrors()) {
+            params.flash();
+            validation.keep();
+            // エラー時もデータをテンプレートに渡す
+            // 注意: disabledなselectの値は通常送信されないため、hiddenフィールドでカバーする
+            // ここではバインドされた `data` をそのまま使う
+             renderArgs.put("data", data); // Keep the potentially invalid data for redisplay
+             validation.keep();
+             render("@edit", data); // Render the edit view again
+        } else {
+            MyData dbData = MyData.findById(id);
+            if (dbData == null) {
+                notFound("Data not found for saving with id: " + id);
+            }
+
+            dbData.name = data.name;
+            // locationTypeはdisabledの場合hiddenから、そうでなければselectから来る
+            dbData.locationType = data.locationType;
+
+            if ("OVERSEAS".equals(data.locationType)) {
+                dbData.overseasAddress = data.overseasAddress;
+                dbData.customsCode = data.customsCode;
+            } else {
+                dbData.overseasAddress = null;
+                dbData.customsCode = null;
+            }
+
+            dbData.save();
+            flash.success("Data (ID: %s) saved successfully!", dbData.id);
+            index();
+            // or edit(dbData.id);
+        }
+    }
+
+    public static void setup() {
+        MyData.deleteAll();
+        MyData domestic = new MyData("国内顧客", "DOMESTIC");
+        domestic.save();
+        MyData overseas = new MyData("Overseas Client", "OVERSEAS");
+        overseas.overseasAddress = "123 International St, Global City";
+        overseas.customsCode = "XYZ789";
+        overseas.save();
+        flash.success("Sample data created.");
+        index();
+    }
+}

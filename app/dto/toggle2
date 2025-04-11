@@ -1,0 +1,143 @@
+#{extends 'main.html' /}
+#{set title:'Edit Data' /}
+
+<h1>Edit Data (ID: ${data.id})</h1>
+
+#{if flash.error}
+    <p style="color: red;">${flash.error}</p>
+#{/if}
+#{if flash.success}
+    <p style="color: green;">${flash.success}</p>
+#{/if}
+
+#{if validation.hasErrors()}
+    <div class="errors">
+        <p>Please correct the following errors:</p>
+        <ul>
+            #{validation.errors().each { error ->}
+                <li>${error.message()}</li>
+            #{/validation.errors().each}
+        </ul>
+    </div>
+#{/if}
+
+#{form @Application.save(data.id)}
+
+    <input type="hidden" name="id" value="${data.id}" />
+
+    <p>
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="data.name" value="${data?.name ?: ''}">
+        <span class="error">#{error 'data.name' /}</span>
+    </p>
+
+    <p>
+        <label for="locationType">Location Type:</label>
+        <%
+            boolean isInitiallyDomestic = "DOMESTIC".equals(data?.locationType);
+            String disabledAttribute = isInitiallyDomestic ? "disabled='disabled'" : "";
+        %>
+        <select id="locationType" name="data.locationType" ${disabledAttribute}>
+            <option value="DOMESTIC" ${data?.locationType == 'DOMESTIC' ? 'selected' : ''}>国内</option>
+            <option value="OVERSEAS" ${data?.locationType == 'OVERSEAS' ? 'selected' : ''}>海外</option>
+        </select>
+        <span class="error">#{error 'data.locationType' /}</span>
+
+        #{if isInitiallyDomestic}
+            <input type="hidden" name="data.locationType" value="DOMESTIC" />
+        #{/if}
+    </p>
+
+    <%-- トグルボタン (初期状態では非表示) --%>
+    <p>
+        <button type="button" id="toggleOverseasBtn" style="display: none;">海外情報 開閉</button>
+    </p>
+
+    <%-- 海外用入力フィールド (初期状態では非表示) --%>
+    <div id="overseasFields" style="display: none;">
+        <hr>
+        <h4>海外用情報</h4>
+        <p>
+            <label for="overseasAddress">Overseas Address:</label>
+            <input type="text" id="overseasAddress" name="data.overseasAddress" value="${data?.overseasAddress ?: ''}">
+            <span class="error">#{error 'data.overseasAddress' /}</span>
+        </p>
+        <p>
+            <label for="customsCode">Customs Code:</label>
+            <input type="text" id="customsCode" name="data.customsCode" value="${data?.customsCode ?: ''}">
+             <span class="error">#{error 'data.customsCode' /}</span>
+        </p>
+    </div>
+
+    <p>
+        <input type="submit" value="保存">
+        <a href="@{Application.index()}">キャンセル</a>
+    </p>
+
+#{/form}
+
+#{set 'moreScripts'}
+    <script type="text/javascript" charset="${_response_encoding}">
+        $(document).ready(function() {
+            var $locationSelect = $('#locationType');
+            var $toggleButton = $('#toggleOverseasBtn');
+            var $overseasFields = $('#overseasFields');
+
+            // Function to update visibility based on select value
+            function updateOverseasVisibility() {
+                // Only proceed if the select is enabled
+                if ($locationSelect.prop('disabled') === false) {
+                    var selectedLocation = $locationSelect.val();
+
+                    if (selectedLocation === 'OVERSEAS') {
+                        // Show the toggle button if "Overseas" is selected
+                        $toggleButton.slideDown();
+                        // Keep the fields hidden initially, they are controlled by the button
+                        // $overseasFields.hide(); // Ensure fields are hidden when switching TO overseas
+                    } else {
+                        // Hide both the button and the fields if "Domestic" is selected
+                        $toggleButton.slideUp();
+                        $overseasFields.slideUp(); // Hide fields if switching TO domestic
+                    }
+                } else {
+                    // If select is disabled (initially Domestic), ensure everything is hidden
+                    $toggleButton.hide();
+                    $overseasFields.hide();
+                }
+            }
+
+            // Add change event listener to the select element (only if it's enabled)
+            $locationSelect.filter(':enabled').change(function() {
+                updateOverseasVisibility();
+            });
+
+            // Add click event listener to the toggle button
+            $toggleButton.click(function() {
+                // Toggle the visibility of the overseas fields
+                $overseasFields.slideToggle();
+                // Optional: Change button text or add aria attributes
+                // $(this).text($overseasFields.is(':visible') ? '海外情報を隠す' : '海外情報を表示');
+                // $(this).attr('aria-expanded', $overseasFields.is(':visible'));
+            });
+
+            // --- Initial setup on page load ---
+            // Check the initial value of the select box
+            var initialLocation = $locationSelect.val();
+            var isSelectDisabled = $locationSelect.prop('disabled');
+
+            if (!isSelectDisabled && initialLocation === 'OVERSEAS') {
+                 // If initially "Overseas" and enabled, show the toggle button
+                 $toggleButton.show();
+                 // Ensure the fields are initially hidden (as per HTML style)
+                 $overseasFields.hide();
+                 // Optional: Set initial aria state if using
+                 // $toggleButton.attr('aria-expanded', 'false');
+            } else {
+                 // Otherwise (Domestic or disabled), ensure button and fields are hidden
+                 $toggleButton.hide();
+                 $overseasFields.hide();
+            }
+
+        });
+    </script>
+#{/set}

@@ -1,0 +1,119 @@
+#{extends 'main.html' /}
+#{set title:'Edit Data' /}
+
+<h1>Edit Data (ID: ${data.id})</h1>
+
+#{if flash.error}
+    <p style="color: red;">${flash.error}</p>
+#{/if}
+#{if flash.success}
+    <p style="color: green;">${flash.success}</p>
+#{/if}
+
+#{if validation.hasErrors()}
+    <div class="errors">
+        <p>Please correct the following errors:</p>
+        <ul>
+            #{validation.errors().each { error ->}
+                <li>${error.message()}</li>
+            #{/validation.errors().each}
+        </ul>
+    </div>
+#{/if}
+
+#{form @Application.save(data.id)}
+
+    <input type="hidden" name="id" value="${data.id}" /> <%-- Hidden ID --%>
+
+    <%-- Use "data.fieldName" for binding to the data object --%>
+    <p>
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="data.name" value="${data?.name ?: ''}">
+        <span class="error">#{error 'data.name' /}</span>
+    </p>
+
+    <p>
+        <label for="locationType">Location Type:</label>
+        <%
+            // Determine if initially domestic
+            boolean isInitiallyDomestic = "DOMESTIC".equals(data?.locationType);
+            // Add disabled attribute if initially domestic
+            String disabledAttribute = isInitiallyDomestic ? "disabled='disabled'" : "";
+        %>
+        <select id="locationType" name="data.locationType" ${disabledAttribute}>
+            <option value="DOMESTIC" ${data?.locationType == 'DOMESTIC' ? 'selected' : ''}>国内</option>
+            <option value="OVERSEAS" ${data?.locationType == 'OVERSEAS' ? 'selected' : ''}>海外</option>
+            %{-- 他の選択肢が必要な場合はここに追加 --}%
+        </select>
+        <span class="error">#{error 'data.locationType' /}</span>
+
+        #{if isInitiallyDomestic}
+            <%-- If the select is disabled, its value won't be submitted. --%>
+            <%-- Add a hidden field to ensure the 'DOMESTIC' value is sent. --%>
+            <input type="hidden" name="data.locationType" value="DOMESTIC" />
+        #{/if}
+    </p>
+
+    <%-- Overseas specific fields (initially shown/hidden based on data.locationType) --%>
+    <div id="overseasFields" style="${data?.locationType == 'OVERSEAS' ? '' : 'display: none;'}">
+        <hr>
+        <h4>海外用情報</h4>
+        <p>
+            <label for="overseasAddress">Overseas Address:</label>
+            <input type="text" id="overseasAddress" name="data.overseasAddress" value="${data?.overseasAddress ?: ''}">
+            <span class="error">#{error 'data.overseasAddress' /}</span>
+        </p>
+        <p>
+            <label for="customsCode">Customs Code:</label>
+            <input type="text" id="customsCode" name="data.customsCode" value="${data?.customsCode ?: ''}">
+             <span class="error">#{error 'data.customsCode' /}</span>
+        </p>
+    </div>
+
+    <p>
+        <input type="submit" value="保存">
+        <a href="@{Application.index()}">キャンセル</a>
+    </p>
+
+#{/form}
+
+#{set 'moreScripts'}
+    <script type="text/javascript" charset="${_response_encoding}">
+        $(document).ready(function() {
+            var $locationSelect = $('#locationType'); // Select要素をキャッシュ
+            var $overseasFields = $('#overseasFields'); // 海外フィールドのDivをキャッシュ
+
+            // Function to toggle the visibility of overseas fields based on selection
+            function toggleOverseasFields() {
+                // Check if the select element is *not* disabled
+                if ($locationSelect.prop('disabled') === false) {
+                    var selectedLocation = $locationSelect.val(); // Get selected value
+                    if (selectedLocation === 'OVERSEAS') {
+                        $overseasFields.slideDown(); // Show with animation
+                    } else {
+                        $overseasFields.slideUp();   // Hide with animation
+                    }
+                } else {
+                    // If disabled, do nothing (maintain initial state)
+                    // console.log("Location type select is disabled.");
+                }
+            }
+
+            // Initial check on page load (although Groovy sets the initial style)
+            // toggleOverseasFields(); // Usually not needed due to inline style
+
+            // Add change event listener to the select element (only if it's enabled)
+            // Using ':enabled' selector ensures we only listen when it's not disabled
+            $locationSelect.filter(':enabled').change(function() {
+                toggleOverseasFields();
+            });
+
+            // Alternative way to bind only if not disabled:
+            // if ($locationSelect.prop('disabled') === false) {
+            //     $locationSelect.change(function() {
+            //         toggleOverseasFields();
+            //     });
+            // }
+        });
+    </script>
+#{/set}

@@ -1,0 +1,162 @@
+#{extends 'main.html' /}
+#{set title:'Edit Data' /}
+
+<h1>Edit Data (ID: ${data.id})</h1>
+
+#{if flash.error}
+    <p style="color: red;">${flash.error}</p>
+#{/if}
+#{if flash.success}
+    <p style="color: green;">${flash.success}</p>
+#{/if}
+
+#{if validation.hasErrors()}
+    <div class="errors">
+        <p>Please correct the following errors:</p>
+        <ul>
+            #{validation.errors().each { error ->}
+                <li>${error.message()}</li>
+            #{/validation.errors().each}
+        </ul>
+    </div>
+#{/if}
+
+#{form @Application.save(data.id)}
+
+    <input type="hidden" name="id" value="${data.id}" />
+
+    <p>
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="data.name" value="${data?.name ?: ''}">
+        <span class="error">#{error 'data.name' /}</span>
+    </p>
+
+    <p>
+        <label for="locationType">Location Type:</label>
+        <%
+            boolean isInitiallyDomestic = "DOMESTIC".equals(data?.locationType);
+            String disabledAttribute = isInitiallyDomestic ? "disabled='disabled'" : "";
+        %>
+        <select id="locationType" name="data.locationType" ${disabledAttribute}>
+            <option value="DOMESTIC" ${data?.locationType == 'DOMESTIC' ? 'selected' : ''}>国内</option>
+            <option value="OVERSEAS" ${data?.locationType == 'OVERSEAS' ? 'selected' : ''}>海外</option>
+        </select>
+        <span class="error">#{error 'data.locationType' /}</span>
+
+        #{if isInitiallyDomestic}
+            <input type="hidden" name="data.locationType" value="DOMESTIC" />
+        #{/if}
+    </p>
+
+    <%-- トグルボタン (初期テキストは '+') --%>
+    <p>
+        <%-- Add a class for easier styling/selection if needed --%>
+        <button type="button" id="toggleOverseasBtn" class="toggle-button" style="display: none;">+</button>
+    </p>
+
+    <%-- 海外用入力フィールド (初期状態では非表示) --%>
+    <div id="overseasFields" style="display: none;">
+        <hr>
+        <h4>海外用情報</h4>
+        <p>
+            <label for="overseasAddress">Overseas Address:</label>
+            <input type="text" id="overseasAddress" name="data.overseasAddress" value="${data?.overseasAddress ?: ''}">
+            <span class="error">#{error 'data.overseasAddress' /}</span>
+        </p>
+        <p>
+            <label for="customsCode">Customs Code:</label>
+            <input type="text" id="customsCode" name="data.customsCode" value="${data?.customsCode ?: ''}">
+             <span class="error">#{error 'data.customsCode' /}</span>
+        </p>
+    </div>
+
+    <p>
+        <input type="submit" value="保存">
+        <a href="@{Application.index()}">キャンセル</a>
+    </p>
+
+#{/form}
+
+#{set 'moreScripts'}
+    <script type="text/javascript" charset="${_response_encoding}">
+        $(document).ready(function() {
+            var $locationSelect = $('#locationType');
+            var $toggleButton = $('#toggleOverseasBtn');
+            var $overseasFields = $('#overseasFields');
+
+            // Function to update visibility based on select value
+            function updateOverseasVisibility() {
+                if ($locationSelect.prop('disabled') === false) {
+                    var selectedLocation = $locationSelect.val();
+
+                    if (selectedLocation === 'OVERSEAS') {
+                        // Show button (text remains '+' initially or if fields are closed)
+                        $toggleButton.slideDown();
+                        // If fields were open, keep them open, otherwise hidden
+                        // Button text logic is handled in the click handler and initial setup
+                    } else {
+                        // Hide button and fields if Domestic
+                        $toggleButton.slideUp(function() {
+                            // Reset button text to '+' when hiding
+                            $(this).text('+');
+                        });
+                        $overseasFields.slideUp(); // Also hide fields
+                    }
+                } else {
+                    // Select is disabled (initially Domestic)
+                    $toggleButton.hide().text('+'); // Ensure hidden and reset text
+                    $overseasFields.hide();
+                }
+            }
+
+            // Add change event listener to the select element (only if it's enabled)
+            $locationSelect.filter(':enabled').change(function() {
+                updateOverseasVisibility();
+            });
+
+            // Add click event listener to the toggle button
+            $toggleButton.click(function() {
+                var $button = $(this); // Cache the button element
+                // Toggle the fields using slideToggle animation
+                $overseasFields.slideToggle(function() {
+                    // This callback function executes *after* the animation completes
+                    // Check the visibility state *after* toggling
+                    if ($overseasFields.is(':visible')) {
+                        $button.text('-'); // Fields are now visible, show '-'
+                    } else {
+                        $button.text('+'); // Fields are now hidden, show '+'
+                    }
+                });
+            });
+
+            // --- Initial setup on page load ---
+            var initialLocation = $locationSelect.val();
+            var isSelectDisabled = $locationSelect.prop('disabled');
+
+            if (!isSelectDisabled && initialLocation === 'OVERSEAS') {
+                 // Initially "Overseas" and enabled:
+                 // Show the button with '+' text (fields start hidden)
+                 $toggleButton.text('+').show();
+                 $overseasFields.hide(); // Ensure fields start hidden
+            } else {
+                 // Otherwise (Domestic or disabled):
+                 // Hide button (ensure text is '+') and hide fields
+                 $toggleButton.hide().text('+');
+                 $overseasFields.hide();
+            }
+
+        });
+    </script>
+#{/set}
+
+#{set 'moreStyles'}
+    <style type="text/css">
+        /* Optional: Style the button for better appearance */
+        .toggle-button {
+            min-width: 25px; /* Ensure minimum width for +/- */
+            padding: 2px 6px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+    </style>
+#{/set}

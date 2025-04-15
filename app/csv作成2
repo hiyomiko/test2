@@ -1,0 +1,173 @@
+Sub ExportToSjisCsv_CustomLayout()
+
+    Dim ws As Worksheet
+    Dim filePath As String
+    Dim adoStream As Object ' ADODB.Streamを遅延バインディングで使用
+    Dim fso As Object       ' FileSystemObjectを遅延バインディングで使用
+    Dim r As Long, c As Long
+    Dim lastRow As Long, lastCol As Long
+    Dim headerRow As Long
+    Dim dataStartRow As Long
+    Dim startCol As Long
+    Dim lineStr As String
+    Dim cellValue As String
+
+    ' --- 設定値 ---
+    Const headerRowConst As Long = 3    ' ヘッダー行番号
+    Const dataStartRowConst As Long = 5 ' データ開始行番号
+    Const startColConst As Long = 2     ' 開始列番号 (B列)
+    Const filePathCell As String = "B2" ' ファイルパスを指定するセル番地
+
+    ' ADODBの定数 (遅延バインディングのために定義)
+    Const adTypeText = 2
+    Const adCRLF = -1         ' ADODB.StreamではCRLFは-1で表現されることが多い
+    Const adWriteLine = 1
+    Const adSaveCreateOverWrite = 2
+    Const adCharsetShiftJIS = "Shift_JIS" ' 文字コード名
+
+    ' --- エラーハンドリング設定 ---
+    On Error GoTo ErrorHandler
+
+    ' --- 対象ワークシートを設定 ---
+    Set ws = ActiveSheet ' または特定のシートを指定: Set ws = ThisWorkbook.Sheets("シート名")
+
+    ' --- 開始行・列を変数に設定 ---
+    headerRow = headerRowConst
+    dataStartRow = dataStartRowConst
+    startCol = startColConst
+
+    ' --- 保存ファイルパスを取得 ---
+    filePath = Trim(ws.Range(filePathCell).Text) ' Trimで前後の空白を除去
+    If filePath = "" Then
+        MsgBox filePathCell & " セルに保存先のフルパスを入力してください。", vbExclamation
+        Exit Sub
+    End If
+
+    ' --- ファイルパスの親フォルダ存在チェック (オプション) ---
+    On Error Resume Next ' FileSystemObjectのエラーを一時的に無視
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    If Err.Number <> 0 Then
+        MsgBox "ファイルシステムオブジェクトの作成に失敗しました。処理を中断します。", vbCritical
+        On Error GoTo ErrorHandler ' エラーハンドリングを元に戻す
+        Exit Sub
+    End If
+    On Error GoTo ErrorHandler ' エラーハンドリングを元に戻す
+
+    If Not fso.FolderExists(fso.GetParentFolderName(filePath)) Then
+        MsgBox "指定されたパスのフォルダが存在しません:" & vbCrLf & fso.GetParentFolderName(filePath) & vbCrLf & "処理を中断します。", vbExclamation
+        Set fso = Nothing
+        Exit Sub
+    End If
+    Set fso = Nothing ' FileSystemObjectを解放
+
+    ' --- データ範囲の最終列と最終行を特定 ---
+    ' 最終列: ヘッダー行(3行目)のB列以降で最後のデータがある列を基準とする
+    lastCol = ws.Cells(headerRow, ws.Columns.Count).End(xlToLeft).Column
+    If lastCol < startCol Then
+        ' ヘッダー行のB列以降にデータがない場合、B列自体を最終列とするか、エラーとするか
+        ' ここでは、少なくともB列は対象とするように調整 (ヘッダーがB3のみの場合など)
+        ' ただし、実際にはヘッダーがないとみなす方が自然かもしれない
+         If ws.Cells(headerRow, startCol).Value = "" Then
+             MsgBox headerRow & "行目の" & Cells(1, startCol).Address(False, False) & "セル以降にヘッダーが見つかりません。", vbInformation
+             Exit Sub
+         Else
+             lastCol = startCol ' B列のみを対象とする
+         End If
+    End If
+
+    ' 最終行: 開始列(B列)のデータ開始行(5行目)以降で最後のデータがある行を基準とする
+    lastRow = ws.Cells(ws.Rows.Count, startCol).End(xlUp).Row
+    ' lastRowがデータ開始行より小さい場合はデータがないと判断
+    If lastRow < dataStartRow Then
+        ' データがない場合でもヘッダーは出力する可能性があるため、ここでは処理を続行
+        ' lastRowをヘッダー行の一つ手前にしておくと、データループが実行されない
+        lastRow = dataStartRow - 1
+    End If
+
+    ' --- ADODB Streamオブジェクトの作成と設定 ---
+    Set adoStream = CreateObject("ADODB.Stream")
+    With adoStream
+        .Type = adTypeText
+        .Charset = adCharsetShiftJIS
+        .LineSeparator = adCRLF
+        .Open
+    End With
+
+    ' --- ヘッダー行の処理 (3行目) ---
+    lineStr = "" ' ヘッダー行の文字列を初期化
+    For c = startCol To lastCol ' B列から最終列まで
+        cellValue = ws.Cells(headerRow, c).Text ' ヘッダー行から値を取得
+
+        ' --- CSVの引用符処理 ---
+        If InStr(1, cellValue, ",") > 0 Or _
+           InStr(1, cellValue, """") > 0 Or _
+           InStr(1, cellValue, vbCr) > 0 Or _
+           InStr(1, cellValue, vbLf) > 0 Then
+            cellValue = """" & Replace(cellValue, """", """""") & """"
+        End If
+
+        ' --- 行文字列の構築 ---
+        If c = startCol Then
+            lineStr = cellValue
+        Else
+            lineStr = lineStr & "," & cellValue
+        End If
+    Next c
+    adoStream.WriteText lineStr, adWriteLine ' ヘッダー行を書き込む
+
+    ' --- データ行の処理 (5行目以降) ---
+    If lastRow >= dataStartRow Then ' データ行が存在する場合のみ処理
+        For r = dataStartRow To lastRow ' データ開始行から最終行まで
+            lineStr = "" ' 各行の文字列を初期化
+            For c = startCol To lastCol ' B列から最終列まで
+                cellValue = ws.Cells(r, c).Text ' データ行から値を取得
+
+                ' --- CSVの引用符処理 ---
+                If InStr(1, cellValue, ",") > 0 Or _
+                   InStr(1, cellValue, """") > 0 Or _
+                   InStr(1, cellValue, vbCr) > 0 Or _
+                   InStr(1, cellValue, vbLf) > 0 Then
+                    cellValue = """" & Replace(cellValue, """", """""") & """"
+                End If
+
+                ' --- 行文字列の構築 ---
+                If c = startCol Then
+                    lineStr = cellValue
+                Else
+                    lineStr = lineStr & "," & cellValue
+                End If
+            Next c
+            adoStream.WriteText lineStr, adWriteLine ' データ行を書き込む
+        Next r
+    End If
+
+    ' --- ストリームの内容をファイルに保存 ---
+    adoStream.SaveToFile filePath, adSaveCreateOverWrite ' 上書き保存
+
+    ' --- 後処理 ---
+    adoStream.Close
+    Set adoStream = Nothing
+    Set ws = Nothing
+
+    ' --- 完了メッセージ ---
+    MsgBox "CSVファイルが正常にエクスポートされました。" & vbCrLf & filePath, vbInformation
+    Exit Sub
+
+' --- エラーハンドリング ---
+ErrorHandler:
+    MsgBox "エラーが発生しました:" & vbCrLf & _
+           "エラー番号: " & Err.Number & vbCrLf & _
+           "エラー内容: " & Err.Description, vbCritical
+    ' エラー発生時もオブジェクトを解放する
+    If Not adoStream Is Nothing Then
+        If adoStream.State = 1 Then ' adStateOpen = 1
+             adoStream.Close
+        End If
+        Set adoStream = Nothing
+    End If
+    If Not fso Is Nothing Then
+        Set fso = Nothing
+    End If
+    Set ws = Nothing
+
+End Sub

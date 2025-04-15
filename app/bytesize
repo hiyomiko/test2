@@ -1,0 +1,36 @@
+package annotations;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+import net.sf.oval.configuration.annotation.Constraint;
+
+/**
+ * Checks that the annotated String's byte size (using UTF-8 encoding)
+ * does not exceed the specified maximum value.
+ */
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.FIELD, ElementType.PARAMETER})
+@Constraint(checkWith = MaxSizeInBytesCheck.class) // 検証ロジッククラスを指定
+public @interface MaxSizeInBytes {
+
+    /**
+     * The maximum allowed byte size (inclusive).
+     */
+    int value(); // 最大バイト数を指定する必須の引数
+
+    /**
+     * The error message key to use if validation fails.
+     * Defaults to "validation.maxSizeInBytes".
+     */
+    String message() default MaxSizeInBytesCheck.mes; // エラーメッセージキー (i18n対応)
+
+    /**
+     * The name of the field to be used in the error message.
+     * If not specified, the framework might use the actual field name.
+     * エラーメッセージ内で "{fieldName}" として参照される想定。
+     */
+    String fieldName() default ""; // エラーメッセージ用の項目名
+}

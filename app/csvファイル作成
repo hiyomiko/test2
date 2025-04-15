@@ -1,0 +1,117 @@
+Sub ExportToSjisCsv()
+
+    Dim ws As Worksheet
+    Dim rngData As Range
+    Dim filePath As Variant ' GetSaveAsFilenameの戻り値用にVariant型を使用
+    Dim adoStream As Object ' ADODB.Streamを遅延バインディングで使用
+    Dim r As Long, c As Long
+    Dim lastRow As Long, lastCol As Long
+    Dim lineStr As String
+    Dim cellValue As String
+
+    ' ADODBの定数 (遅延バインディングのために定義)
+    Const adTypeText = 2
+    Const adCRLF = -1         ' ADODB.StreamではCRLFは-1で表現されることが多い
+    Const adWriteLine = 1
+    Const adSaveCreateOverWrite = 2
+    Const adCharsetShiftJIS = "Shift_JIS" ' 文字コード名
+
+    ' --- エラーハンドリング設定 ---
+    On Error GoTo ErrorHandler
+
+    ' --- 対象ワークシートを設定 ---
+    Set ws = ActiveSheet ' または特定のシートを指定: Set ws = ThisWorkbook.Sheets("シート名")
+
+    ' --- データ範囲を特定 ---
+    ' UsedRangeでデータのあるセル範囲を取得
+    Set rngData = ws.UsedRange
+    If rngData Is Nothing Or rngData.Cells.Count = 0 Then
+        MsgBox "アクティブシートにデータが見つかりません。", vbInformation
+        Exit Sub
+    End If
+    ' UsedRange内の最終行・最終列を取得
+    lastRow = rngData.Rows.Count + rngData.Row - 1
+    lastCol = rngData.Columns.Count + rngData.Column - 1
+    ' データ範囲を再設定 (UsedRangeがA1から始まらない場合を考慮)
+    Set rngData = ws.Range(ws.Cells(1, 1), ws.Cells(lastRow, lastCol))
+
+
+    ' --- 保存ファイルパスを取得 ---
+    filePath = Application.GetSaveAsFilename( _
+        InitialFileName:=ws.Name & ".csv", _
+        FileFilter:="CSV (SJIS, CRLF) (*.csv), *.csv", _
+        Title:="名前を付けてCSV保存 (Shift-JIS, CRLF)")
+
+    If filePath = False Then ' ユーザーがキャンセルした場合
+        MsgBox "キャンセルされました。", vbInformation
+        Exit Sub
+    End If
+
+    ' --- ADODB Streamオブジェクトの作成と設定 ---
+    ' 遅延バインディング: 事前に参照設定をする必要がない
+    Set adoStream = CreateObject("ADODB.Stream")
+    With adoStream
+        .Type = adTypeText            ' テキストモード
+        .Charset = adCharsetShiftJIS  ' 文字コードをShift-JISに設定
+        .LineSeparator = adCRLF       ' 改行コードをCRLFに設定
+        .Open                         ' ストリームを開く
+    End With
+
+    ' --- データ行の処理 ---
+    For r = 1 To lastRow ' 1行目 (ヘッダー) から最終行まで
+        lineStr = "" ' 各行の文字列を初期化
+        For c = 1 To lastCol
+            ' セルの値をテキストとして取得 (表示されている通り)
+            cellValue = rngData.Cells(r, c).Text
+
+            ' --- CSVの引用符処理 ---
+            ' 値にカンマ、ダブルクォーテーション、改行が含まれる場合はダブルクォーテーションで囲む
+            If InStr(1, cellValue, ",") > 0 Or _
+               InStr(1, cellValue, """") > 0 Or _
+               InStr(1, cellValue, vbCr) > 0 Or _
+               InStr(1, cellValue, vbLf) > 0 Then
+                ' 既存のダブルクォーテーションは二重にし、全体をダブルクォーテーションで囲む
+                cellValue = """" & Replace(cellValue, """", """""") & """"
+            End If
+
+            ' --- 行文字列の構築 ---
+            If c = 1 Then
+                lineStr = cellValue ' 最初の列
+            Else
+                lineStr = lineStr & "," & cellValue ' 2列目以降はカンマ区切り
+            End If
+        Next c
+
+        ' --- 行をストリームに書き込む ---
+        adoStream.WriteText lineStr, adWriteLine ' adWriteLineで指定した改行コードが付与される
+    Next r
+
+    ' --- ストリームの内容をファイルに保存 ---
+    adoStream.SaveToFile filePath, adSaveCreateOverWrite ' 上書き保存
+
+    ' --- 後処理 ---
+    adoStream.Close
+    Set adoStream = Nothing
+    Set rngData = Nothing
+    Set ws = Nothing
+
+    ' --- 完了メッセージ ---
+    MsgBox "CSVファイルが正常にエクスポートされました。" & vbCrLf & filePath, vbInformation
+    Exit Sub
+
+' --- エラーハンドリング ---
+ErrorHandler:
+    MsgBox "エラーが発生しました:" & vbCrLf & _
+           "エラー番号: " & Err.Number & vbCrLf & _
+           "エラー内容: " & Err.Description, vbCritical
+    ' エラー発生時もオブジェクトを解放する
+    If Not adoStream Is Nothing Then
+        If adoStream.State = 1 Then ' adStateOpen = 1 (ストリームが開いている場合)
+             adoStream.Close
+        End If
+        Set adoStream = Nothing
+    End If
+    Set rngData = Nothing
+    Set ws = Nothing
+
+End Sub

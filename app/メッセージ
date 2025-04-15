@@ -1,0 +1,7 @@
+# バイトサイズ検証エラーメッセージ
+# {2} は項目名 (アノテーションの fieldName または Playが自動設定するフィールド名)
+# {1} は最大許容バイト数 (アノテーションの value)
+validation.maxSizeInBytes={2}は{1}バイト以内で入力してください。
+
+# 参考: もし fieldName を指定せず、Playが {0} にフィールド名を設定する場合
+# validation.maxSizeInBytes={0}は{1}バイト以内で入力してください。

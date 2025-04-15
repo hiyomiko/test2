@@ -1,0 +1,110 @@
+package annotations;
+
+import java.nio.charset.StandardCharsets; // Java 7以降。古いJavaの場合は "UTF-8" を文字列で指定
+import java.util.HashMap;
+import java.util.Map;
+
+import net.sf.oval.Validator;
+import net.sf.oval.configuration.annotation.AbstractAnnotationCheck;
+import net.sf.oval.context.OValContext;
+import net.sf.oval.exception.OValException;
+import play.Logger;
+import play.exceptions.UnexpectedException; // Play 1.x の例外クラス
+
+public class MaxSizeInBytesCheck extends AbstractAnnotationCheck<MaxSizeInBytes> {
+
+    // デフォルトのエラーメッセージキー
+    public final static String mes = "validation.maxSizeInBytes";
+
+    private int maxSize;
+    private String fieldName;
+
+    /**
+     * アノテーションから設定値を読み込みます。
+     * @param annotation アノテーションインスタンス
+     */
+    @Override
+    public void configure(MaxSizeInBytes annotation) {
+        this.maxSize = annotation.value();
+        this.fieldName = annotation.fieldName();
+        // 親クラスのsetMessageを呼び出して、メッセージキーを設定します。
+        setMessage(annotation.message());
+    }
+
+    /**
+     * 実際の検証ロジックを実行します。
+     * @param validatedObject 検証対象を含むオブジェクト
+     * @param valueToValidate 検証対象のフィールドの値
+     * @param context OValのコンテキスト
+     * @param validator バリデータ
+     * @return 検証が成功した場合は true、失敗した場合は false
+     * @throws OValException 検証中にエラーが発生した場合
+     */
+    @Override
+    public boolean isSatisfied(Object validatedObject, Object valueToValidate, OValContext context, Validator validator) throws OValException {
+        // null または String 型でない場合はチェック対象外（OKとする）
+        // 必須チェックは @Required などで行う想定
+        if (valueToValidate == null) {
+            return true;
+        }
+        if (!(valueToValidate instanceof String)) {
+            // String以外の型にこのアノテーションが使われた場合の考慮
+            // ここでは true を返すか、例外を投げるか、false を返すか設計による
+             Logger.warn("@MaxSizeInBytes used on non-String field: %s", context.toString());
+             return true; // String以外はチェックしない
+        }
+
+        String stringValue = (String) valueToValidate;
+        if (stringValue.isEmpty()) {
+            return true; // 空文字列はOKとする
+        }
+
+        try {
+            // UTF-8 でバイト数を計算
+            byte[] bytes = stringValue.getBytes(StandardCharsets.UTF_8);
+            // Java 6 互換性が必要な場合:
+            // byte[] bytes = stringValue.getBytes("UTF-8");
+            return bytes.length <= this.maxSize;
+        } catch (/*UnsupportedEncodingException e*/ Exception e) { // Java 6 の場合は UnsupportedEncodingException
+            // UTF-8は通常サポートされているはずなので、基本的には発生しない
+            Logger.error(e, "UTF-8 encoding not supported, validation failed.");
+            // 検証エラーとして扱う
+            throw new UnexpectedException("Failed to check byte size due to encoding issue", e);
+            // return false; // または単に false を返す
+        }
+    }
+
+    /**
+     * エラーメッセージで使用する変数を設定します。
+     * Play 1.4 の i18n メッセージ ({1}, {2} など) に対応させます。
+     * @param messageVariables Play! Framework によって渡される変数マップ
+     */
+    @Override
+    public void setMessageVariables(Map<String, String> messageVariables) {
+       super.setMessageVariables(messageVariables);
+       // {1} に最大バイト数を設定
+       messageVariables.put("1", String.valueOf(this.maxSize));
+       // {2} に項目名を設定
+       // fieldName がアノテーションで指定されていればそれを使う
+       if (this.fieldName != null && !this.fieldName.isEmpty()) {
+           messageVariables.put("2", this.fieldName);
+       }
+       // fieldName が指定されていない場合、Play! が自動的にフィールド名を
+       // {0} や {2} に割り当てることを期待します（通常は{0}が多い）。
+       // ここでは明示的に {2} を使う想定でメッセージファイルを作成します。
+       // もし {0} にフィールド名が入る場合は、メッセージファイルを修正してください。
+    }
+
+    // createMessageVariables() は OVal 標準の方法だが、
+    // Play 1.4 では setMessageVariables() を使うのが一般的。
+    // @Override
+    // public Map<String, String> createMessageVariables() {
+    //     Map<String, String> messageVariables = new HashMap<String, String>();
+    //     messageVariables.put("maxSize", String.valueOf(this.maxSize));
+    //     if (this.fieldName != null && !this.fieldName.isEmpty()) {
+    //         messageVariables.put("fieldName", this.fieldName);
+    //     }
+    //     // Playのメッセージ機構 ({1}, {2}...) とは直接連動しない場合がある
+    //     return messageVariables;
+    // }
+}

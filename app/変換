@@ -1,0 +1,68 @@
+import java.time.LocalDate;
+import java.time.Month;
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
+
+public class DateFormatExample {
+
+    public static void main(String[] args) {
+        // 1. 対象の日付データを作成 (2025年2月28日)
+        LocalDate date = LocalDate.of(2025, Month.FEBRUARY, 28);
+        // または LocalDate date = LocalDate.of(2025, 2, 28);
+
+        // 2. 日付を指定の形式にフォーマット
+        String formattedDate = formatSettlementDate(date);
+
+        // 3. 結果を出力
+        System.out.println(formattedDate); // 出力: SETTLEMENT FOR 28TH FEB
+    }
+
+    /**
+     * LocalDateを指定の形式 "SETTLEMENT FOR [日][序数] [月略称]" に変換します。
+     * 例: 2025-02-28 -> "SETTLEMENT FOR 28TH FEB"
+     *
+     * @param date フォーマットする日付
+     * @return フォーマットされた文字列
+     */
+    public static String formatSettlementDate(LocalDate date) {
+        // 日付の「日」を取得
+        int dayOfMonth = date.getDayOfMonth();
+
+        // 日付の序数（TH, ST, ND, RD）を取得
+        String dayWithSuffix = getDayWithOrdinalSuffix(dayOfMonth);
+
+        // 月の略称（英語、大文字）を取得
+        // "MMM" パターンは月の略称（例: Feb）を生成します。Locale.ENGLISHを指定して英語表記にします。
+        DateTimeFormatter monthFormatter = DateTimeFormatter.ofPattern("MMM", Locale.ENGLISH);
+        String monthAbbreviation = date.format(monthFormatter).toUpperCase(); // 大文字に変換
+
+        // 文字列を組み立てる
+        return "SETTLEMENT FOR " + dayWithSuffix + " " + monthAbbreviation;
+    }
+
+    /**
+     * 日にち（1-31）に対応する序数（TH, ST, ND, RD）を付けて返します。
+     * 例: 1 -> "1ST", 2 -> "2ND", 3 -> "3RD", 4 -> "4TH", 11 -> "11TH", 21 -> "21ST"
+     *
+     * @param day 日 (1-31)
+     * @return 日に序数を付けた文字列 (例: "28TH")
+     */
+    public static String getDayWithOrdinalSuffix(int day) {
+        if (day < 1 || day > 31) {
+            throw new IllegalArgumentException("Invalid day of month: " + day);
+        }
+
+        // 11, 12, 13 は例外的に "TH"
+        if (day >= 11 && day <= 13) {
+            return day + "TH";
+        }
+
+        // それ以外は末尾の数字で判定
+        switch (day % 10) {
+            case 1:  return day + "ST";
+            case 2:  return day + "ND";
+            case 3:  return day + "RD";
+            default: return day + "TH";
+        }
+    }
+}
